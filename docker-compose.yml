@@ -1,0 +1,198 @@
+version: "3.9"
+
+# ─── Full stack: infrastructure + all application services ───────────────────
+# Local dev:   pnpm dev:up
+# Server:      docker compose up -d   (set env vars via .env or environment block)
+
+networks:
+  aurum_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:
+  grafana_data:
+  prometheus_data:
+  loki_data:
+
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+  postgres:
+    extends:
+      file: docker-compose.infra.yml
+      service: postgres
+    networks: [aurum_net]
+
+  redis:
+    extends:
+      file: docker-compose.infra.yml
+      service: redis
+    networks: [aurum_net]
+
+  kafka:
+    extends:
+      file: docker-compose.infra.yml
+      service: kafka
+    networks: [aurum_net]
+
+  kafka-ui:
+    extends:
+      file: docker-compose.infra.yml
+      service: kafka-ui
+    networks: [aurum_net]
+
+  mailhog:
+    extends:
+      file: docker-compose.infra.yml
+      service: mailhog
+    networks: [aurum_net]
+
+  prometheus:
+    extends:
+      file: docker-compose.infra.yml
+      service: prometheus
+    networks: [aurum_net]
+
+  loki:
+    extends:
+      file: docker-compose.infra.yml
+      service: loki
+    networks: [aurum_net]
+
+  grafana:
+    extends:
+      file: docker-compose.infra.yml
+      service: grafana
+    networks: [aurum_net]
+
+  # ── Database migrations (runs once, then exits) ─────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+      target: builder
+    container_name: aurum_migrate
+    command: ["pnpm", "--filter", "@aurum/db", "run", "db:migrate"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://aurum:aurum_secret@postgres:5432/aurum
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [aurum_net]
+
+  # ── NestJS API ──────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+      target: production
+    container_name: aurum_api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+      - "9464:9464"
+    env_file: [.env]
+    environment:
+      PORT: "4000"
+      DATABASE_URL: postgresql://aurum:aurum_secret@postgres:5432/aurum
+      REDIS_URL: redis://:aurum_redis_secret@redis:6379
+      KAFKA_BROKERS: kafka:9092
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [aurum_net]
+
+  # ── Landing page (port 3000) ────────────────────────────────────────────────
+  landing:
+    build:
+      context: .
+      dockerfile: apps/landing/Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://api:4000}"
+        NEXT_PUBLIC_INVESTOR_URL: "${NEXT_PUBLIC_INVESTOR_URL:-http://localhost:3001}"
+        NEXT_PUBLIC_INSTITUTIONAL_URL: "${NEXT_PUBLIC_INSTITUTIONAL_URL:-http://localhost:3002}"
+    container_name: aurum_landing
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DOCKER_BUILD: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [aurum_net]
+
+  # ── Investor portal (port 3001) ─────────────────────────────────────────────
+  investor-portal:
+    build:
+      context: .
+      dockerfile: apps/investor-portal/Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://api:4000}"
+        NEXT_PUBLIC_CHAIN_ID: "${NEXT_PUBLIC_CHAIN_ID:-11155111}"
+        NEXT_PUBLIC_EXPLORER_URL: "${NEXT_PUBLIC_EXPLORER_URL:-https://sepolia.etherscan.io}"
+    container_name: aurum_investor
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      DOCKER_BUILD: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [aurum_net]
+
+  # ── Institutional portal (port 3002) ────────────────────────────────────────
+  institutional-portal:
+    build:
+      context: .
+      dockerfile: apps/institutional-portal/Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://api:4000}"
+        NEXT_PUBLIC_CHAIN_ID: "${NEXT_PUBLIC_CHAIN_ID:-11155111}"
+    container_name: aurum_institutional
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      DOCKER_BUILD: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [aurum_net]
+
+  # ── Ops console (port 3003) ─────────────────────────────────────────────────
+  ops-console:
+    build:
+      context: .
+      dockerfile: apps/ops-console/Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://api:4000}"
+    container_name: aurum_ops
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      DOCKER_BUILD: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [aurum_net]

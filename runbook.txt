@@ -1,0 +1,74 @@
+Here's the single end-to-end runbook — follow it top to bottom on the fresh Ubuntu server. Everything referenced already exists in the repo.
+
+Aurum server bring-up — runbook
+0. Get the code there
+
+# copy/clone the repo to e.g. /opt/aurum, then:
+cd /opt/aurum
+git init && git add -A && git commit -m "initial"   # forge install + migrate strategy need git
+sed -i 's/\r$//' scripts/*.sh deploy/Caddyfile        # strip Windows CRLF — REQUIRED
+chmod +x scripts/*.sh
+1. Install + harden the host
+
+./scripts/server-setup.sh            # Node20, pnpm9, Docker, swap, log rotation, then verify table
+newgrp docker                        # or log out/in — Docker won't work groupless until you do
+./scripts/server-setup.sh --check    # re-run; confirm the table is all PASS
+2. Configure secrets — the blockers (services/api/.env)
+Edit before bootstrapping. The ones that will stop you cold:
+
+
+JWT_SECRET=$(openssl rand -base64 64)          # rotate — the old ones were exposed in chat
+JWT_REFRESH_SECRET=$(openssl rand -base64 64)  # rotate
+RPC_URL=https://eth-sepolia.g.alchemy.com/v2/<KEY>   # currently points at MAINNET — fix
+CHAIN_ID=11155111                              # must match RPC network
+NODE_ENV=development                           # prod + KYC_PROVIDER=stub = API throws on boot
+CORS_ORIGINS=https://app.yourdomain,https://institutional.yourdomain
+APP_URL=https://app.yourdomain
+KAFKA_BROKERS=localhost:29092                  # NOT 9092 when API runs on the host
+(AURUM_TOKEN_ADDRESS stays empty until step 4.)
+
+3. Bootstrap the stack (infra → migrate → seed)
+
+./scripts/server-setup.sh --project   # installs deps, brings up Postgres/Redis/Kafka,
+                                       # creates baseline migration, seeds admin
+git add packages/db/prisma/migrations && git commit -m "baseline migration"   # MUST commit
+Set a real admin password (the default is admin@aurum.finance / ChangeMe!2025):
+
+
+SEED_ADMIN_EMAIL=you@yourdomain SEED_ADMIN_PASSWORD='<strong>' pnpm --filter @aurum/db db:seed
+4. Deploy the contract — when you're ready to mint (optional for a UI demo)
+
+./scripts/server-setup.sh --foundry    # then open a NEW shell so `forge` is on PATH
+# fund the deployer wallet with Sepolia ETH (faucet), then:
+SEPOLIA_RPC_URL="$RPC_URL" DEPLOYER_PRIVATE_KEY=0x... \
+ADMIN_MULTISIG=0x... MINTER_HOT_WALLET=0x... PAUSER_ADDRESS=0x... \
+ETHERSCAN_API_KEY=... ./scripts/deploy-sepolia.sh
+Then in .env: AURUM_TOKEN_ADDRESS=<PROXY address from the log>. Confirm MINTER_HOT_WALLET == address(MINTER_PRIVATE_KEY) or every mint reverts. Full details in CONTRACTS.md.
+
+5. Build + run the apps
+
+# NEXT_PUBLIC_* are baked at build time — set them, THEN build:
+pnpm build
+pnpm --filter @aurum/api dev          # API → :4000, Swagger at /docs (dev only)
+# start each portal (3000 landing, 3001 investor, 3002 institutional, 3003 ops)
+# — or run everything in containers instead:  pnpm dev:up
+6. TLS + firewall (public access)
+
+sudo ufw allow OpenSSH && sudo ufw allow 80 && sudo ufw allow 443 && sudo ufw enable
+sudo cp deploy/Caddyfile /etc/caddy/Caddyfile   # edit domains + ACME email first
+sudo systemctl reload caddy
+DNS A-records must point at the server; keep Postgres/Redis/Kafka/Grafana internal; reach the ops console (3003) via SSH tunnel.
+
+7. Backups
+
+sudo mkdir -p /var/backups/aurum && sudo chown $USER /var/backups/aurum
+./scripts/backup-postgres.sh          # test once
+crontab -e   # 30 2 * * * PROJECT_DIR=/opt/aurum /opt/aurum/scripts/backup-postgres.sh >> /var/log/aurum-backup.log 2>&1
+8. Smoke test
+curl https://api.yourdomain/health → 200 · browse the investor portal → phone sign-in (OTP prints to the API log while SMS is stubbed) → confirm dashboard loads.
+
+Decisions still open (not blockers, but on the path to a real pilot): live GoldBod settlement + Paystack subaccount, live Sumsub KYC, SMS provider, Polygon-vs-Sepolia for production, and the embedded-wallet Privy app ID. Paused by you: institutional webhook APIs.
+
+The two things most likely to trip you up: (2) the mainnet→Sepolia RPC_URL fix, and (3) committing the baseline migration. Everything else the scripts handle.
+
+Safe travels — when you're back and on the server, tell me which step you're at and we'll pick up there.

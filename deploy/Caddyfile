@@ -1,0 +1,80 @@
+# Aurum — Caddy reverse proxy with automatic HTTPS (Let's Encrypt)
+# ==============================================================================
+# Deploy:
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   # edit the domains + ACME email below to match your DNS
+#   sudo systemctl reload caddy
+#
+# Prereqs:
+#   - DNS A/AAAA records for each hostname point at this server
+#   - Ports 80 and 443 open in the firewall (Caddy needs 80 for ACME challenge)
+#   - The apps are running and listening on the localhost ports shown
+#
+# Caddy obtains + renews TLS certs automatically. No manual certbot.
+# ==============================================================================
+
+{
+	# Email used by Let's Encrypt for expiry notices. REQUIRED — set yours.
+	email admin@yourdomain.com
+	# Uncomment while testing to avoid hitting LE rate limits, then remove:
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+# Reusable hardening snippet
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# ── Backend API (NestJS) ──────────────────────────────────────────────────────
+# Routes live under /api/v1/*  (health: /health, metrics: /metrics).
+# Keep Swagger (/docs) off in prod by setting NODE_ENV=production.
+api.yourdomain.com {
+	encode zstd gzip
+	import security_headers
+	reverse_proxy localhost:4000
+}
+
+# ── Landing page (public marketing) ──────────────────────────────────────────
+yourdomain.com, www.yourdomain.com {
+	encode zstd gzip
+	import security_headers
+	reverse_proxy localhost:3000
+}
+
+# ── Investor portal ───────────────────────────────────────────────────────────
+app.yourdomain.com {
+	encode zstd gzip
+	import security_headers
+	reverse_proxy localhost:3001
+}
+
+# ── Institutional portal ──────────────────────────────────────────────────────
+institutional.yourdomain.com {
+	encode zstd gzip
+	import security_headers
+	reverse_proxy localhost:3002
+}
+
+# ── Ops console (INTERNAL ADMIN — lock this down) ─────────────────────────────
+# This is your compliance/admin surface. Do NOT leave it open to the world.
+# Option A (recommended): don't expose publicly at all — reach it via SSH tunnel:
+#   ssh -L 3003:localhost:3003 user@server  → browse http://localhost:3003
+# Option B: expose behind HTTP basic auth (generate hash: `caddy hash-password`)
+#   and/or an IP allowlist. Uncomment and fill in:
+#
+# ops.yourdomain.com {
+# 	encode zstd gzip
+# 	import security_headers
+# 	@blocked not remote_ip 1.2.3.4/32   # your office/VPN IP
+# 	respond @blocked 403
+# 	basic_auth {
+# 		admin <PASTE_caddy_hash-password_OUTPUT_HERE>
+# 	}
+# 	reverse_proxy localhost:3003
+# }

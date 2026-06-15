@@ -1,0 +1,351 @@
+// Aurum — PostgreSQL schema
+// Run `pnpm db:generate` after changes.
+// Run `pnpm db:migrate:dev --name <description>` to create a migration.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+  COMPLIANCE
+  TREASURY
+  SYSTEM
+}
+
+enum KycStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_REVIEW
+}
+
+enum OrderType {
+  BUY
+  SELL
+  REDEEM
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLIANCE_HOLD
+  PAYMENT_PENDING
+  PAYMENT_CONFIRMED
+  RESERVE_ALLOCATED
+  MINTING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+enum MintBurnStatus {
+  PENDING
+  SUBMITTED
+  CONFIRMED
+  FAILED
+}
+
+enum LedgerType {
+  MINT
+  BURN
+  FEE
+  ADJUSTMENT
+}
+
+enum PayoutStatus {
+  PENDING
+  INITIATED
+  CONFIRMED
+  FAILED
+  REVERSED
+}
+
+// ─── Identity & Access ───────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+  // At least one of email / phone is always present (enforced in the service layer).
+  email         String?  @unique
+  phone         String?  @unique // E.164, e.g. +233241234567
+  firstName     String?
+  lastName      String?
+  passwordHash  String?
+  emailVerified Boolean  @default(false)
+  phoneVerified Boolean  @default(false)
+  role          Role     @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  wallets     Wallet[]
+  sessions    Session[]
+  kycProfile  KycProfile?
+  orders      Order[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String
+  address   String   @unique
+  chainId   Int      @default(1)
+  verified  Boolean  @default(false)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("wallets")
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  userId       String
+  jti          String    @unique
+  refreshToken String?   @unique
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([jti])
+  @@map("sessions")
+}
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@map("email_verifications")
+}
+
+// ─── KYC ─────────────────────────────────────────────────────────────────────
+
+model KycProfile {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  status            KycStatus @default(PENDING)
+  riskScore         Float?
+  providerReference String?
+  providerName      String?
+  rejectionReason   String?
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history KycHistory[]
+
+  @@map("kyc_profiles")
+}
+
+model KycHistory {
+  id           String    @id @default(uuid())
+  kycProfileId String
+  fromStatus   KycStatus
+  toStatus     KycStatus
+  reason       String?
+  actorId      String?
+  createdAt    DateTime  @default(now())
+
+  kycProfile KycProfile @relation(fields: [kycProfileId], references: [id])
+
+  @@index([kycProfileId])
+  @@map("kyc_history")
+}
+
+// ─── Orders & Payments ───────────────────────────────────────────────────────
+
+model Order {
+  id              String      @id @default(uuid())
+  userId          String
+  type            OrderType
+  status          OrderStatus @default(PENDING)
+  amountUsd       Decimal     @db.Decimal(18, 8)  // gross paid by the buyer
+  goldOunces      Decimal     @db.Decimal(18, 8)
+  tokenAmount     Decimal     @db.Decimal(18, 8)
+  goldPriceUsd    Decimal     @db.Decimal(18, 8)
+  // Itemized breakdown of amountUsd (gross = goldCost + platformFee + tax)
+  goldCostUsd     Decimal?    @db.Decimal(18, 8)  // portion settled to GoldBod
+  platformFeeUsd  Decimal?    @db.Decimal(18, 8)  // Aurum commission
+  taxUsd          Decimal?    @db.Decimal(18, 8)  // tax on the platform fee
+  walletAddress       String
+  idempotencyKey      String      @unique
+  redemptionMetadata  Json?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  payment     Payment?
+  mintRequest MintRequest?
+  burnRequest BurnRequest?
+  payout      Payout?
+  payoutMetadata Json?
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("orders")
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  orderId          String        @unique
+  provider         String
+  providerRef      String?
+  status           PaymentStatus @default(PENDING)
+  amount           Decimal       @db.Decimal(18, 8)
+  currency         String        @default("USD")
+  authorizationUrl String?
+  metadata         Json?
+  confirmedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+// ─── Token Operations ─────────────────────────────────────────────────────────
+
+model MintRequest {
+  id            String         @id @default(uuid())
+  orderId       String         @unique
+  walletAddress String
+  tokenAmount   Decimal        @db.Decimal(18, 8)
+  status        MintBurnStatus @default(PENDING)
+  txHash        String?
+  blockNumber   BigInt?
+  submittedAt   DateTime?
+  confirmedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([status])
+  @@map("mint_requests")
+}
+
+model BurnRequest {
+  id            String         @id @default(uuid())
+  orderId       String         @unique
+  walletAddress String
+  tokenAmount   Decimal        @db.Decimal(18, 8)
+  status        MintBurnStatus @default(PENDING)
+  txHash        String?        @unique // one burn tx can settle exactly one order
+  blockNumber   BigInt?
+  submittedAt   DateTime?
+  confirmedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([status])
+  @@map("burn_requests")
+}
+
+// ─── Payouts (SELL order settlements) ────────────────────────────────────────
+
+model Payout {
+  id            String       @id @default(uuid())
+  orderId       String       @unique
+  provider      String       @default("paystack")
+  recipientCode String?
+  transferCode  String?
+  providerRef   String?
+  status        PayoutStatus @default(PENDING)
+  amount        Decimal      @db.Decimal(18, 8)
+  currency      String
+  confirmedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([status])
+  @@map("payouts")
+}
+
+// ─── Ledger ───────────────────────────────────────────────────────────────────
+
+model LedgerEntry {
+  id            String     @id @default(uuid())
+  userId        String
+  type          LedgerType
+  amount        Decimal    @db.Decimal(18, 8)
+  balanceBefore Decimal    @db.Decimal(18, 8)
+  balanceAfter  Decimal    @db.Decimal(18, 8)
+  reference     String
+  createdAt     DateTime   @default(now())
+
+  @@index([userId, createdAt])
+  @@map("ledger_entries")
+}
+
+// ─── Audit (append-only, no updates/deletes — enforced at DB level) ───────────
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  eventId     String   @unique @default(uuid())
+  actorId     String
+  action      String
+  resource    String
+  resourceId  String?
+  before      Json?
+  after       Json?
+  requestId   String
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([resource, resourceId])
+  @@index([requestId])
+  @@index([createdAt])
+  @@map("audit_events")
+}
+
+// ─── Reserve ─────────────────────────────────────────────────────────────────
+
+model ReserveSnapshot {
+  id             String   @id @default(uuid())
+  goldHeldOz     Decimal  @db.Decimal(18, 8)
+  tokenSupply    Decimal  @db.Decimal(18, 8)
+  backingRatio   Decimal  @db.Decimal(10, 8)
+  goldPriceUsd   Decimal  @db.Decimal(18, 8)
+  vaultReference String?
+  source         String   @default("automated")
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("reserve_snapshots")
+}

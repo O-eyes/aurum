@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
-import { PageLoader } from '@/components/ui/spinner';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { PageLoader } from "@/components/ui/spinner";
 
 export default function RootPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -11,7 +11,7 @@ export default function RootPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    router.replace(isAuthenticated ? '/dashboard' : '/login');
+    router.replace(isAuthenticated ? "/dashboard" : "/login");
   }, [isAuthenticated, isLoading, router]);
 
   return <PageLoader />;

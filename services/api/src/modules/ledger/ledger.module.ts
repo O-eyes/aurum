@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { LedgerService } from './ledger.service';
+import { Module } from "@nestjs/common";
+import { LedgerService } from "./ledger.service";
 
 @Module({
   providers: [LedgerService],

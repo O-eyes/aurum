@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from "@prisma/client";
 
 export interface FeeConfig {
   platformPercent: number;
@@ -32,7 +32,9 @@ export function computeBuyBreakdown(
   // Never let fee exceed gross (e.g. tiny order + large flat fee).
   if (platformFeeUsd.greaterThan(grossUsd)) platformFeeUsd = grossUsd;
 
-  const taxUsd = platformFeeUsd.mul(new Prisma.Decimal(fees.taxPercent).div(100));
+  const taxUsd = platformFeeUsd.mul(
+    new Prisma.Decimal(fees.taxPercent).div(100),
+  );
 
   let goldCostUsd = grossUsd.sub(platformFeeUsd).sub(taxUsd);
   if (goldCostUsd.isNegative()) goldCostUsd = new Prisma.Decimal(0);

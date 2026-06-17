@@ -1,40 +1,40 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { auth, ApiError } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Alert } from '@/components/ui/alert';
-import { CheckCircle2 } from 'lucide-react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { auth, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Alert } from "@/components/ui/alert";
+import { CheckCircle2 } from "lucide-react";
 
 const schema = z
   .object({
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
-    email: z.string().email('Enter a valid email'),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Enter a valid email"),
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
-      .regex(/[0-9]/, 'Must contain at least one number'),
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+      .regex(/[0-9]/, "Must contain at least one number"),
     confirm: z.string(),
   })
   .refine((d) => d.password === d.confirm, {
-    path: ['confirm'],
-    message: 'Passwords do not match',
+    path: ["confirm"],
+    message: "Passwords do not match",
   });
 
 type FormData = z.infer<typeof schema>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
   const {
@@ -44,7 +44,7 @@ export default function RegisterPage() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const onSubmit = async (data: FormData) => {
-    setError('');
+    setError("");
     try {
       await auth.register({
         email: data.email,
@@ -54,7 +54,11 @@ export default function RegisterPage() {
       });
       setSuccess(true);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Registration failed. Please try again.');
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : "Registration failed. Please try again.",
+      );
     }
   };
 
@@ -65,12 +69,18 @@ export default function RegisterPage() {
           <div className="flex justify-center">
             <CheckCircle2 className="h-12 w-12 text-green-500" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">Check your email</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Check your email
+          </h2>
           <p className="text-sm text-gray-500">
-            We sent a verification link to your email address. Click it to activate your account
-            and then sign in.
+            We sent a verification link to your email address. Click it to
+            activate your account and then sign in.
           </p>
-          <Button variant="secondary" className="w-full" onClick={() => router.push('/login')}>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => router.push("/login")}
+          >
             Back to sign in
           </Button>
         </CardContent>
@@ -82,8 +92,12 @@ export default function RegisterPage() {
     <Card>
       <CardContent className="pt-6 space-y-5">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Create account</h2>
-          <p className="text-sm text-gray-500 mt-1">Start investing in gold-backed tokens</p>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Create account
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Start investing in gold-backed tokens
+          </p>
         </div>
 
         {error && <Alert variant="error">{error}</Alert>}
@@ -94,13 +108,13 @@ export default function RegisterPage() {
               label="First name"
               placeholder="Jane"
               error={errors.firstName?.message}
-              {...register('firstName')}
+              {...register("firstName")}
             />
             <Input
               label="Last name"
               placeholder="Smith"
               error={errors.lastName?.message}
-              {...register('lastName')}
+              {...register("lastName")}
             />
           </div>
           <Input
@@ -108,21 +122,21 @@ export default function RegisterPage() {
             type="email"
             placeholder="you@example.com"
             error={errors.email?.message}
-            {...register('email')}
+            {...register("email")}
           />
           <Input
             label="Password"
             type="password"
             placeholder="Min. 8 characters"
             error={errors.password?.message}
-            {...register('password')}
+            {...register("password")}
           />
           <Input
             label="Confirm password"
             type="password"
             placeholder="••••••••"
             error={errors.confirm?.message}
-            {...register('confirm')}
+            {...register("confirm")}
           />
           <Button type="submit" className="w-full" loading={isSubmitting}>
             Create account
@@ -130,8 +144,11 @@ export default function RegisterPage() {
         </form>
 
         <p className="text-center text-sm text-gray-500">
-          Already have an account?{' '}
-          <Link href="/login" className="text-gold-600 font-medium hover:underline">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="text-gold-600 font-medium hover:underline"
+          >
             Sign in
           </Link>
         </p>

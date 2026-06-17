@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 import {
   KycProvider,
   KycApplicantData,
   KycProviderResult,
   KycProviderStatus,
-} from '../kyc.provider.interface';
-import { v4 as uuid } from 'uuid';
+} from "../kyc.provider.interface";
+import { v4 as uuid } from "uuid";
 
 /**
  * Stub KYC provider for local development and testing.
@@ -14,7 +14,7 @@ import { v4 as uuid } from 'uuid';
  */
 @Injectable()
 export class StubKycProvider implements KycProvider {
-  readonly name = 'stub';
+  readonly name = "stub";
   private readonly logger = new Logger(StubKycProvider.name);
   private readonly applicants = new Map<string, KycProviderResult>();
 
@@ -25,17 +25,19 @@ export class StubKycProvider implements KycProvider {
     const applicantId = `stub_${uuid()}`;
     this.applicants.set(applicantId, {
       applicantId,
-      status: 'under_review',
+      status: "under_review",
       riskScore: 10,
     });
-    this.logger.debug(`Stub KYC applicant created: ${applicantId} for user ${userId}`);
+    this.logger.debug(
+      `Stub KYC applicant created: ${applicantId} for user ${userId}`,
+    );
     return { applicantId, sdkToken: `stub_sdk_token_${applicantId}` };
   }
 
   async getApplicantStatus(applicantId: string): Promise<KycProviderResult> {
     const result = this.applicants.get(applicantId);
     if (!result) {
-      return { applicantId, status: 'pending' };
+      return { applicantId, status: "pending" };
     }
     return result;
   }
@@ -56,7 +58,7 @@ export class StubKycProvider implements KycProvider {
     };
     return {
       applicantId: event.applicantId,
-      status: 'approved',
+      status: "approved",
       riskScore: 10,
     };
   }

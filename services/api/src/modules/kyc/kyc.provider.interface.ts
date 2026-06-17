@@ -7,11 +7,11 @@ export interface KycApplicantData {
 }
 
 export type KycProviderStatus =
-  | 'pending'
-  | 'under_review'
-  | 'approved'
-  | 'rejected'
-  | 'needs_review';
+  | "pending"
+  | "under_review"
+  | "approved"
+  | "rejected"
+  | "needs_review";
 
 export interface KycProviderResult {
   applicantId: string;
@@ -41,4 +41,4 @@ export interface KycProvider {
   };
 }
 
-export const KYC_PROVIDER = Symbol('KYC_PROVIDER');
+export const KYC_PROVIDER = Symbol("KYC_PROVIDER");

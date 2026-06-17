@@ -1,40 +1,40 @@
 export enum OrderType {
-  BUY = 'BUY',
-  SELL = 'SELL',
-  REDEEM = 'REDEEM',
+  BUY = "BUY",
+  SELL = "SELL",
+  REDEEM = "REDEEM",
 }
 
 export enum OrderStatus {
-  PENDING = 'PENDING',
-  COMPLIANCE_HOLD = 'COMPLIANCE_HOLD',
-  PAYMENT_PENDING = 'PAYMENT_PENDING',
-  PAYMENT_CONFIRMED = 'PAYMENT_CONFIRMED',
-  RESERVE_ALLOCATED = 'RESERVE_ALLOCATED',
-  MINTING = 'MINTING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED',
+  PENDING = "PENDING",
+  COMPLIANCE_HOLD = "COMPLIANCE_HOLD",
+  PAYMENT_PENDING = "PAYMENT_PENDING",
+  PAYMENT_CONFIRMED = "PAYMENT_CONFIRMED",
+  RESERVE_ALLOCATED = "RESERVE_ALLOCATED",
+  MINTING = "MINTING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
 }
 
 export enum PaymentStatus {
-  PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
-  FAILED = 'FAILED',
-  REFUNDED = 'REFUNDED',
+  PENDING = "PENDING",
+  CONFIRMED = "CONFIRMED",
+  FAILED = "FAILED",
+  REFUNDED = "REFUNDED",
 }
 
 export enum MintBurnStatus {
-  PENDING = 'PENDING',
-  SUBMITTED = 'SUBMITTED',
-  CONFIRMED = 'CONFIRMED',
-  FAILED = 'FAILED',
+  PENDING = "PENDING",
+  SUBMITTED = "SUBMITTED",
+  CONFIRMED = "CONFIRMED",
+  FAILED = "FAILED",
 }
 
 export enum LedgerType {
-  MINT = 'MINT',
-  BURN = 'BURN',
-  FEE = 'FEE',
-  ADJUSTMENT = 'ADJUSTMENT',
+  MINT = "MINT",
+  BURN = "BURN",
+  FEE = "FEE",
+  ADJUSTMENT = "ADJUSTMENT",
 }
 
 export const VALID_ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -57,13 +57,8 @@ export const VALID_ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
     OrderStatus.RESERVE_ALLOCATED,
     OrderStatus.MINTING,
   ],
-  [OrderStatus.RESERVE_ALLOCATED]: [
-    OrderStatus.MINTING,
-  ],
-  [OrderStatus.MINTING]: [
-    OrderStatus.COMPLETED,
-    OrderStatus.FAILED,
-  ],
+  [OrderStatus.RESERVE_ALLOCATED]: [OrderStatus.MINTING],
+  [OrderStatus.MINTING]: [OrderStatus.COMPLETED, OrderStatus.FAILED],
   [OrderStatus.COMPLETED]: [],
   [OrderStatus.FAILED]: [],
   [OrderStatus.CANCELLED]: [],

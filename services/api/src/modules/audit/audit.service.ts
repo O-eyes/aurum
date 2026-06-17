@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { KafkaService } from '../../infrastructure/kafka/kafka.service';
-import { KafkaTopic } from '../../infrastructure/kafka/kafka.topics';
-import { AuditEventInput } from '@aurum/types';
-import { v4 as uuid } from 'uuid';
+import { Injectable, Logger } from "@nestjs/common";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { KafkaService } from "../../infrastructure/kafka/kafka.service";
+import { KafkaTopic } from "../../infrastructure/kafka/kafka.topics";
+import { AuditEventInput } from "@aurum/types";
+import { v4 as uuid } from "uuid";
 
 @Injectable()
 export class AuditService {
@@ -38,12 +38,20 @@ export class AuditService {
     this.kafka
       .publish(
         KafkaTopic.AUDIT_EVENT,
-        'AUDIT_EVENT',
-        { eventId, actorId: input.actorId, action: input.action, resource: input.resource },
+        "AUDIT_EVENT",
+        {
+          eventId,
+          actorId: input.actorId,
+          action: input.action,
+          resource: input.resource,
+        },
         { requestId: input.requestId, actorId: input.actorId },
       )
       .catch((err: unknown) => {
-        this.logger.warn('Audit Kafka fan-out failed (DB write succeeded)', err);
+        this.logger.warn(
+          "Audit Kafka fan-out failed (DB write succeeded)",
+          err,
+        );
       });
   }
 
@@ -70,7 +78,7 @@ export class AuditService {
             }
           : {}),
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: filters.limit ?? 50,
       skip: filters.offset ?? 0,
     });

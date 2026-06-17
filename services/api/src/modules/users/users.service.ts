@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { AuditService } from '../audit/audit.service';
-import { GoldPriceService } from '../../infrastructure/gold-price/gold-price.service';
-import { AuditAction } from '@aurum/types';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { AuditService } from "../audit/audit.service";
+import { GoldPriceService } from "../../infrastructure/gold-price/gold-price.service";
+import { AuditAction } from "@aurum/types";
 
 @Injectable()
 export class UsersService {
@@ -31,7 +31,7 @@ export class UsersService {
       },
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
     return {
       id: user.id,
@@ -40,16 +40,20 @@ export class UsersService {
       firstName: user.firstName,
       lastName: user.lastName,
       roles: [user.role],
-      kycStatus: user.kycProfile?.status ?? 'PENDING',
+      kycStatus: user.kycProfile?.status ?? "PENDING",
       emailVerified: user.emailVerified,
       phoneVerified: user.phoneVerified,
       createdAt: user.createdAt.toISOString(),
     };
   }
 
-  async updateProfile(id: string, data: { firstName?: string; lastName?: string }, requestId: string) {
+  async updateProfile(
+    id: string,
+    data: { firstName?: string; lastName?: string },
+    requestId: string,
+  ) {
     const user = await this.db.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
     const updated = await this.db.user.update({
       where: { id },
@@ -57,13 +61,22 @@ export class UsersService {
         ...(data.firstName !== undefined && { firstName: data.firstName }),
         ...(data.lastName !== undefined && { lastName: data.lastName }),
       },
-      select: { id: true, email: true, phone: true, firstName: true, lastName: true, role: true, createdAt: true, kycProfile: { select: { status: true } } },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        createdAt: true,
+        kycProfile: { select: { status: true } },
+      },
     });
 
     await this.audit.emit({
       actorId: id,
       action: AuditAction.USER_PROFILE_UPDATED,
-      resource: 'user',
+      resource: "user",
       resourceId: id,
       before: { firstName: user.firstName, lastName: user.lastName },
       after: data,
@@ -77,7 +90,7 @@ export class UsersService {
       firstName: updated.firstName,
       lastName: updated.lastName,
       roles: [updated.role],
-      kycStatus: updated.kycProfile?.status ?? 'PENDING',
+      kycStatus: updated.kycProfile?.status ?? "PENDING",
       createdAt: updated.createdAt.toISOString(),
     };
   }
@@ -100,7 +113,7 @@ export class UsersService {
         createdAt: true,
         kycProfile: { select: { status: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: Math.min(limit, 200),
       skip: offset,
     });
@@ -112,7 +125,7 @@ export class UsersService {
       firstName: u.firstName,
       lastName: u.lastName,
       roles: [u.role],
-      kycStatus: u.kycProfile?.status ?? 'PENDING',
+      kycStatus: u.kycProfile?.status ?? "PENDING",
       emailVerified: u.emailVerified,
       phoneVerified: u.phoneVerified,
       createdAt: u.createdAt.toISOString(),
@@ -130,7 +143,7 @@ export class UsersService {
         isPrimary: true,
         createdAt: true,
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
     });
   }
 
@@ -144,14 +157,14 @@ export class UsersService {
       where: { id: walletId, userId },
     });
 
-    if (!wallet) throw new NotFoundException('Wallet not found');
+    if (!wallet) throw new NotFoundException("Wallet not found");
 
     await this.db.wallet.delete({ where: { id: walletId } });
 
     await this.audit.emit({
       actorId: userId,
       action: AuditAction.WALLET_REMOVED,
-      resource: 'wallet',
+      resource: "wallet",
       resourceId: walletId,
       before: { address: wallet.address },
       requestId,
@@ -165,7 +178,7 @@ export class UsersService {
     const [entries, goldPriceDecimal] = await Promise.all([
       this.db.ledgerEntry.findMany({
         where: { userId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: 1,
         select: { balanceAfter: true },
       }),

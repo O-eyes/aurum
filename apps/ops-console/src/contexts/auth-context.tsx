@@ -1,7 +1,13 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { auth, type UserProfile } from '@/lib/api';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { auth, type UserProfile } from "@/lib/api";
 
 interface AuthContextValue {
   user: UserProfile | null;
@@ -21,10 +27,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = auth.getAccessToken();
-    if (!token) { setIsLoading(false); return; }
-    auth.me()
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    auth
+      .me()
       .then(setUser)
-      .catch(() => { auth.clearTokens(); setUser(null); })
+      .catch(() => {
+        auth.clearTokens();
+        setUser(null);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -42,23 +55,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await auth.me();
       setUser(profile);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const devLogin = useCallback(() => {
     setUser({
-      id: 'dev-ops',
-      email: 'ops@aurum.local',
-      firstName: 'Dev',
-      lastName: 'Operator',
-      roles: ['ADMIN', 'COMPLIANCE'],
-      kycStatus: 'APPROVED',
+      id: "dev-ops",
+      email: "ops@aurum.local",
+      firstName: "Dev",
+      lastName: "Operator",
+      roles: ["ADMIN", "COMPLIANCE"],
+      kycStatus: "APPROVED",
       createdAt: new Date().toISOString(),
     });
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, logout, refresh, devLogin }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        login,
+        logout,
+        refresh,
+        devLogin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -66,6 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

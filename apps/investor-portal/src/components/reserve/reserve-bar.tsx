@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { reserve } from '@/lib/api';
-import { formatUsd } from '@/lib/utils';
-import { useEffect, useState } from 'react';
-import { ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
+import { useQuery } from "@tanstack/react-query";
+import { reserve } from "@/lib/api";
+import { formatUsd } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
 
 // Dev mock so the bar renders without a live backend
 const DEV_SNAPSHOT = {
-  backingRatio: '1.0000',
-  goldHeldOz: '1250.000000',
-  tokenSupply: '1250.0000',
-  goldPriceUsd: '2648.50',
+  backingRatio: "1.0000",
+  goldHeldOz: "1250.000000",
+  tokenSupply: "1250.0000",
+  goldPriceUsd: "2648.50",
   snapshotedAt: new Date().toISOString(),
 };
 
@@ -20,7 +20,9 @@ function useSecondsSince(isoTimestamp: string | undefined) {
   useEffect(() => {
     if (!isoTimestamp) return;
     const tick = () =>
-      setSeconds(Math.floor((Date.now() - new Date(isoTimestamp).getTime()) / 1000));
+      setSeconds(
+        Math.floor((Date.now() - new Date(isoTimestamp).getTime()) / 1000),
+      );
     tick();
     const id = setInterval(tick, 5000);
     return () => clearInterval(id);
@@ -34,12 +36,16 @@ function formatAgo(s: number) {
   return `${Math.floor(s / 3600)}h ago`;
 }
 
-export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'horizontal' | 'vertical' }) {
-  const isDev = process.env.NODE_ENV === 'development';
-  const vertical = orientation === 'vertical';
+export function ReserveBar({
+  orientation = "horizontal",
+}: {
+  orientation?: "horizontal" | "vertical";
+}) {
+  const isDev = process.env.NODE_ENV === "development";
+  const vertical = orientation === "vertical";
 
   const { data: liveData } = useQuery({
-    queryKey: ['reserve-snapshot'],
+    queryKey: ["reserve-snapshot"],
     queryFn: reserve.latest,
     staleTime: 55_000,
     refetchInterval: 60_000,
@@ -53,13 +59,13 @@ export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'hori
   if (!data) {
     return (
       <div
-        className={`${vertical ? 'flex flex-col gap-4 h-full px-4 py-5' : 'flex items-center gap-4 border-b px-6 py-3'} border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900`}
+        className={`${vertical ? "flex flex-col gap-4 h-full px-4 py-5" : "flex items-center gap-4 border-b px-6 py-3"} border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900`}
       >
         {[160, 120, 140, 110].map((w) => (
           <div
             key={w}
             className="h-4 animate-pulse rounded bg-gray-200 dark:bg-gray-700"
-            style={{ width: vertical ? '100%' : w }}
+            style={{ width: vertical ? "100%" : w }}
           />
         ))}
       </div>
@@ -68,37 +74,40 @@ export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'hori
 
   const ratio = parseFloat(data.backingRatio);
   const ratioPercent = (ratio * 100).toFixed(2);
-  const reserveValue = parseFloat(data.goldHeldOz) * parseFloat(data.goldPriceUsd);
+  const reserveValue =
+    parseFloat(data.goldHeldOz) * parseFloat(data.goldPriceUsd);
   const tokenSupply = parseFloat(data.tokenSupply);
 
   const { textColor, bgColor, borderColor, Icon, statusLabel } =
     ratio >= 1.0
       ? {
-          textColor: 'text-emerald-700 dark:text-emerald-400',
-          bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
-          borderColor: 'border-emerald-200 dark:border-emerald-800',
+          textColor: "text-emerald-700 dark:text-emerald-400",
+          bgColor: "bg-emerald-50 dark:bg-emerald-950/40",
+          borderColor: "border-emerald-200 dark:border-emerald-800",
           Icon: ShieldCheck,
-          statusLabel: 'Fully Backed',
+          statusLabel: "Fully Backed",
         }
       : ratio >= 0.98
-      ? {
-          textColor: 'text-yellow-700 dark:text-yellow-400',
-          bgColor: 'bg-yellow-50 dark:bg-yellow-950/40',
-          borderColor: 'border-yellow-200 dark:border-yellow-800',
-          Icon: ShieldAlert,
-          statusLabel: 'Near Threshold',
-        }
-      : {
-          textColor: 'text-red-700 dark:text-red-400',
-          bgColor: 'bg-red-50 dark:bg-red-950/40',
-          borderColor: 'border-red-200 dark:border-red-800',
-          Icon: ShieldX,
-          statusLabel: 'Under-collateralised',
-        };
+        ? {
+            textColor: "text-yellow-700 dark:text-yellow-400",
+            bgColor: "bg-yellow-50 dark:bg-yellow-950/40",
+            borderColor: "border-yellow-200 dark:border-yellow-800",
+            Icon: ShieldAlert,
+            statusLabel: "Near Threshold",
+          }
+        : {
+            textColor: "text-red-700 dark:text-red-400",
+            bgColor: "bg-red-50 dark:bg-red-950/40",
+            borderColor: "border-red-200 dark:border-red-800",
+            Icon: ShieldX,
+            statusLabel: "Under-collateralised",
+          };
 
   const liveIndicator =
     isDev && !isLive ? (
-      <span className="text-xs text-gray-400 dark:text-gray-500 italic">dev preview</span>
+      <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+        dev preview
+      </span>
     ) : (
       <span className="flex items-center gap-1.5">
         <span className="relative flex h-2 w-2">
@@ -106,7 +115,7 @@ export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'hori
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         </span>
         <span className="text-xs text-gray-400 dark:text-gray-500">
-          {secondsSince === 0 ? 'live' : `updated ${formatAgo(secondsSince)}`}
+          {secondsSince === 0 ? "live" : `updated ${formatAgo(secondsSince)}`}
         </span>
       </span>
     );
@@ -114,12 +123,18 @@ export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'hori
   // ── Vertical rail (narrow, fills height) ────────────────────────────────────
   if (vertical) {
     return (
-      <div className={`flex h-full flex-col border-l ${borderColor} ${bgColor}`}>
+      <div
+        className={`flex h-full flex-col border-l ${borderColor} ${bgColor}`}
+      >
         <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-200/60 dark:border-gray-700/60">
           <Icon className={`h-5 w-5 ${textColor} shrink-0`} />
           <div>
-            <p className={`text-lg font-bold leading-none ${textColor}`}>{ratioPercent}%</p>
-            <p className={`text-xs font-medium ${textColor} opacity-75 mt-0.5`}>{statusLabel}</p>
+            <p className={`text-lg font-bold leading-none ${textColor}`}>
+              {ratioPercent}%
+            </p>
+            <p className={`text-xs font-medium ${textColor} opacity-75 mt-0.5`}>
+              {statusLabel}
+            </p>
           </div>
         </div>
 
@@ -132,7 +147,7 @@ export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'hori
           />
           <Metric
             label="Token Supply"
-            value={`${tokenSupply.toLocaleString('en-US', { maximumFractionDigits: 2 })} AUR`}
+            value={`${tokenSupply.toLocaleString("en-US", { maximumFractionDigits: 2 })} AUR`}
             sub="1 AUR = 1 oz gold"
             isDev={isDev && !isLive}
           />
@@ -153,11 +168,17 @@ export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'hori
 
   // ── Horizontal bar (mobile / top) ───────────────────────────────────────────
   return (
-    <div className={`flex items-center gap-4 border-b ${borderColor} ${bgColor} px-4 py-2.5 flex-wrap`}>
+    <div
+      className={`flex items-center gap-4 border-b ${borderColor} ${bgColor} px-4 py-2.5 flex-wrap`}
+    >
       <div className="flex items-center gap-1.5 shrink-0">
         <Icon className={`h-4 w-4 ${textColor}`} />
-        <span className={`text-sm font-bold ${textColor}`}>{ratioPercent}%</span>
-        <span className={`hidden sm:inline text-xs font-medium ${textColor} opacity-75`}>
+        <span className={`text-sm font-bold ${textColor}`}>
+          {ratioPercent}%
+        </span>
+        <span
+          className={`hidden sm:inline text-xs font-medium ${textColor} opacity-75`}
+        >
           {statusLabel}
         </span>
       </div>
@@ -174,7 +195,7 @@ export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'hori
         <div className="hidden md:block h-4 w-px bg-gray-300 dark:bg-gray-600 shrink-0" />
         <Metric
           label="Token Supply"
-          value={`${tokenSupply.toLocaleString('en-US', { maximumFractionDigits: 2 })} AUR`}
+          value={`${tokenSupply.toLocaleString("en-US", { maximumFractionDigits: 2 })} AUR`}
           sub="1 AUR = 1 oz gold"
           isDev={isDev && !isLive}
         />
@@ -187,7 +208,9 @@ export function ReserveBar({ orientation = 'horizontal' }: { orientation?: 'hori
         />
       </div>
 
-      <div className="flex items-center gap-1.5 shrink-0 ml-auto">{liveIndicator}</div>
+      <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+        {liveIndicator}
+      </div>
     </div>
   );
 }
@@ -205,11 +228,17 @@ function Metric({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs text-gray-500 dark:text-gray-400 leading-none">{label}</p>
-      <p className={`text-sm font-semibold leading-tight mt-0.5 truncate ${isDev ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}>
+      <p className="text-xs text-gray-500 dark:text-gray-400 leading-none">
+        {label}
+      </p>
+      <p
+        className={`text-sm font-semibold leading-tight mt-0.5 truncate ${isDev ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-gray-100"}`}
+      >
         {value}
       </p>
-      <p className="text-xs text-gray-400 dark:text-gray-500 leading-none mt-0.5">{sub}</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 leading-none mt-0.5">
+        {sub}
+      </p>
     </div>
   );
 }

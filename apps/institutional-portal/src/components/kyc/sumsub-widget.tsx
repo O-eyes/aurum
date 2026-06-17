@@ -1,9 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 declare global {
-  interface Window { snsWebSdk: any; }
+  interface Window {
+    snsWebSdk: any;
+  }
 }
 
 interface Props {
@@ -12,9 +14,14 @@ interface Props {
   onStatusChange?: (reviewStatus: string) => void;
 }
 
-const SUMSUB_SCRIPT = 'https://static.sumsub.com/idensic/static/sns-websdk-builder.js';
+const SUMSUB_SCRIPT =
+  "https://static.sumsub.com/idensic/static/sns-websdk-builder.js";
 
-export function SumsubWidget({ accessToken, onTokenRefresh, onStatusChange }: Props) {
+export function SumsubWidget({
+  accessToken,
+  onTokenRefresh,
+  onStatusChange,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sdkRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
@@ -22,8 +29,12 @@ export function SumsubWidget({ accessToken, onTokenRefresh, onStatusChange }: Pr
 
   const onTokenRefreshRef = useRef(onTokenRefresh);
   const onStatusChangeRef = useRef(onStatusChange);
-  useEffect(() => { onTokenRefreshRef.current = onTokenRefresh; }, [onTokenRefresh]);
-  useEffect(() => { onStatusChangeRef.current = onStatusChange; }, [onStatusChange]);
+  useEffect(() => {
+    onTokenRefreshRef.current = onTokenRefresh;
+  }, [onTokenRefresh]);
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange;
+  }, [onStatusChange]);
 
   useEffect(() => {
     if (!accessToken || !containerRef.current) return;
@@ -33,10 +44,10 @@ export function SumsubWidget({ accessToken, onTokenRefresh, onStatusChange }: Pr
       try {
         const sdk = window.snsWebSdk
           .init(accessToken, () => onTokenRefreshRef.current())
-          .withConf({ lang: 'en' })
+          .withConf({ lang: "en" })
           .withOptions({ addViewportTag: false, adaptIframeHeight: true })
-          .on('idCheck.onApplicantStatusChanged', (payload: any) => {
-            onStatusChangeRef.current?.(payload.reviewStatus ?? 'pending');
+          .on("idCheck.onApplicantStatusChanged", (payload: any) => {
+            onStatusChangeRef.current?.(payload.reviewStatus ?? "pending");
           })
           .build();
         sdk.launch(containerRef.current);
@@ -48,26 +59,42 @@ export function SumsubWidget({ accessToken, onTokenRefresh, onStatusChange }: Pr
       }
     };
 
-    if (window.snsWebSdk) { initSdk(); return; }
+    if (window.snsWebSdk) {
+      initSdk();
+      return;
+    }
 
     if (document.querySelector(`script[src="${SUMSUB_SCRIPT}"]`)) {
-      const poll = setInterval(() => { if (window.snsWebSdk) { clearInterval(poll); initSdk(); } }, 100);
+      const poll = setInterval(() => {
+        if (window.snsWebSdk) {
+          clearInterval(poll);
+          initSdk();
+        }
+      }, 100);
       return () => clearInterval(poll);
     }
 
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.src = SUMSUB_SCRIPT;
     script.async = true;
     script.onload = initSdk;
-    script.onerror = () => { setLoadError(true); setLoading(false); };
+    script.onerror = () => {
+      setLoadError(true);
+      setLoading(false);
+    };
     document.head.appendChild(script);
-    return () => { sdkRef.current = null; };
+    return () => {
+      sdkRef.current = null;
+    };
   }, [accessToken]);
 
   if (loadError) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-        <p className="text-sm text-red-700">Could not load the verification widget. Check your connection and try again.</p>
+        <p className="text-sm text-red-700">
+          Could not load the verification widget. Check your connection and try
+          again.
+        </p>
       </div>
     );
   }
@@ -80,7 +107,7 @@ export function SumsubWidget({ accessToken, onTokenRefresh, onStatusChange }: Pr
           <p className="text-xs text-gray-400">Loading verification widget…</p>
         </div>
       )}
-      <div ref={containerRef} className={loading ? 'invisible' : ''} />
+      <div ref={containerRef} className={loading ? "invisible" : ""} />
     </div>
   );
 }

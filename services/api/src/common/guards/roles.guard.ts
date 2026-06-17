@@ -1,8 +1,13 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { FastifyRequest } from 'fastify';
-import { Role, AuthenticatedUser } from '@aurum/types';
-import { ROLES_KEY } from '../decorators/roles.decorator';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { FastifyRequest } from "fastify";
+import { Role, AuthenticatedUser } from "@aurum/types";
+import { ROLES_KEY } from "../decorators/roles.decorator";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -16,13 +21,15 @@ export class RolesGuard implements CanActivate {
 
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
-    const request = context.switchToHttp().getRequest<FastifyRequest & { user: AuthenticatedUser }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<FastifyRequest & { user: AuthenticatedUser }>();
     const user = request.user;
 
-    if (!user) throw new ForbiddenException('No user context');
+    if (!user) throw new ForbiddenException("No user context");
 
     if (!requiredRoles.includes(user.role as Role)) {
-      throw new ForbiddenException('Insufficient permissions');
+      throw new ForbiddenException("Insufficient permissions");
     }
 
     return true;

@@ -4,20 +4,26 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
-} from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { ConfigService } from '@nestjs/config';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { KafkaService } from '../../infrastructure/kafka/kafka.service';
-import { AuditService } from '../audit/audit.service';
-import { GoldPriceService } from '../../infrastructure/gold-price/gold-price.service';
-import { LedgerService } from '../ledger/ledger.service';
-import { KafkaTopic } from '../../infrastructure/kafka/kafka.topics';
-import { assertValidOrderTransition } from './orders-state-machine';
-import { computeBuyBreakdown, type FeeConfig } from './pricing';
-import { AuditAction, KycStatus, OrderStatus, OrderType, LedgerType } from '@aurum/types';
-import type { CreateOrderDto } from './dto/create-order.dto';
-import type { CreateRedeemDto } from './dto/create-redeem.dto';
+} from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { ConfigService } from "@nestjs/config";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { KafkaService } from "../../infrastructure/kafka/kafka.service";
+import { AuditService } from "../audit/audit.service";
+import { GoldPriceService } from "../../infrastructure/gold-price/gold-price.service";
+import { LedgerService } from "../ledger/ledger.service";
+import { KafkaTopic } from "../../infrastructure/kafka/kafka.topics";
+import { assertValidOrderTransition } from "./orders-state-machine";
+import { computeBuyBreakdown, type FeeConfig } from "./pricing";
+import {
+  AuditAction,
+  KycStatus,
+  OrderStatus,
+  OrderType,
+  LedgerType,
+} from "@aurum/types";
+import type { CreateOrderDto } from "./dto/create-order.dto";
+import type { CreateRedeemDto } from "./dto/create-redeem.dto";
 
 @Injectable()
 export class OrdersService {
@@ -34,9 +40,9 @@ export class OrdersService {
 
   private get feeConfig(): FeeConfig {
     return {
-      platformPercent: this.config.get<number>('fees.platformPercent') ?? 1.5,
-      platformFlatUsd: this.config.get<number>('fees.platformFlatUsd') ?? 0,
-      taxPercent: this.config.get<number>('fees.taxPercent') ?? 0,
+      platformPercent: this.config.get<number>("fees.platformPercent") ?? 1.5,
+      platformFlatUsd: this.config.get<number>("fees.platformFlatUsd") ?? 0,
+      taxPercent: this.config.get<number>("fees.taxPercent") ?? 0,
     };
   }
 
@@ -48,7 +54,8 @@ export class OrdersService {
       where: { idempotencyKey: dto.idempotencyKey },
     });
     if (existing) {
-      if (existing.userId !== userId) throw new ConflictException('Idempotency key already used');
+      if (existing.userId !== userId)
+        throw new ConflictException("Idempotency key already used");
       return existing;
     }
 
@@ -66,7 +73,11 @@ export class OrdersService {
     let taxUsd: Prisma.Decimal | null = null;
 
     if (type === OrderType.BUY) {
-      const breakdown = computeBuyBreakdown(amountUsd, goldPriceUsd, this.feeConfig);
+      const breakdown = computeBuyBreakdown(
+        amountUsd,
+        goldPriceUsd,
+        this.feeConfig,
+      );
       goldOunces = breakdown.goldOunces;
       goldCostUsd = breakdown.goldCostUsd;
       platformFeeUsd = breakdown.platformFeeUsd;
@@ -87,7 +98,9 @@ export class OrdersService {
     }
 
     // KYC gate
-    const kycProfile = await this.db.kycProfile.findUnique({ where: { userId } });
+    const kycProfile = await this.db.kycProfile.findUnique({
+      where: { userId },
+    });
     const kycApproved = kycProfile?.status === KycStatus.APPROVED;
 
     const initialStatus = kycApproved
@@ -113,7 +126,14 @@ export class OrdersService {
       },
     });
 
-    await this.emitOrderEvent(order.id, userId, null, initialStatus, requestId, userId);
+    await this.emitOrderEvent(
+      order.id,
+      userId,
+      null,
+      initialStatus,
+      requestId,
+      userId,
+    );
 
     return order;
   }
@@ -123,7 +143,7 @@ export class OrdersService {
       where: { id: orderId, userId },
       include: { payment: true, mintRequest: true, burnRequest: true },
     });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
     return order;
   }
 
@@ -131,47 +151,70 @@ export class OrdersService {
     return this.db.order.findMany({
       where: { userId },
       include: { payment: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: Math.min(limit, 100),
       skip: offset,
     });
   }
 
   async cancel(orderId: string, userId: string, requestId: string) {
-    const order = await this.db.order.findFirst({ where: { id: orderId, userId } });
-    if (!order) throw new NotFoundException('Order not found');
+    const order = await this.db.order.findFirst({
+      where: { id: orderId, userId },
+    });
+    if (!order) throw new NotFoundException("Order not found");
 
-    assertValidOrderTransition(order.status as OrderStatus, OrderStatus.CANCELLED);
+    assertValidOrderTransition(
+      order.status as OrderStatus,
+      OrderStatus.CANCELLED,
+    );
 
     const updated = await this.db.order.update({
       where: { id: orderId },
       data: { status: OrderStatus.CANCELLED },
     });
 
-    await this.emitOrderEvent(orderId, userId, order.status as OrderStatus, OrderStatus.CANCELLED, requestId, userId);
+    await this.emitOrderEvent(
+      orderId,
+      userId,
+      order.status as OrderStatus,
+      OrderStatus.CANCELLED,
+      requestId,
+      userId,
+    );
     return updated;
   }
 
   // ── Redemptions ───────────────────────────────────────────────────────────
 
-  async createRedemption(userId: string, dto: CreateRedeemDto, requestId: string) {
+  async createRedemption(
+    userId: string,
+    dto: CreateRedeemDto,
+    requestId: string,
+  ) {
     const existing = await this.db.order.findUnique({
       where: { idempotencyKey: dto.idempotencyKey },
     });
     if (existing) {
-      if (existing.userId !== userId) throw new ConflictException('Idempotency key already used');
+      if (existing.userId !== userId)
+        throw new ConflictException("Idempotency key already used");
       return existing;
     }
 
     // KYC gate
-    const kycProfile = await this.db.kycProfile.findUnique({ where: { userId } });
+    const kycProfile = await this.db.kycProfile.findUnique({
+      where: { userId },
+    });
     if (kycProfile?.status !== KycStatus.APPROVED) {
-      throw new BadRequestException('KYC approval required to redeem physical gold');
+      throw new BadRequestException(
+        "KYC approval required to redeem physical gold",
+      );
     }
 
     // 1 oz per standard denominator mapped from weightG
     const OZ_PER_GRAM = 0.0321507;
-    const ozEach = new Prisma.Decimal(dto.denomination.weightG).mul(OZ_PER_GRAM);
+    const ozEach = new Prisma.Decimal(dto.denomination.weightG).mul(
+      OZ_PER_GRAM,
+    );
     const goldOunces = ozEach.mul(dto.quantity);
     const tokenAmount = goldOunces;
 
@@ -212,7 +255,14 @@ export class OrdersService {
       },
     });
 
-    await this.emitOrderEvent(order.id, userId, null, OrderStatus.PENDING, requestId, userId);
+    await this.emitOrderEvent(
+      order.id,
+      userId,
+      null,
+      OrderStatus.PENDING,
+      requestId,
+      userId,
+    );
     return order;
   }
 
@@ -220,9 +270,12 @@ export class OrdersService {
 
   async onPaymentConfirmed(orderId: string, requestId: string) {
     const order = await this.db.order.findUnique({ where: { id: orderId } });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
-    assertValidOrderTransition(order.status as OrderStatus, OrderStatus.PAYMENT_CONFIRMED);
+    assertValidOrderTransition(
+      order.status as OrderStatus,
+      OrderStatus.PAYMENT_CONFIRMED,
+    );
 
     await this.db.order.update({
       where: { id: orderId },
@@ -235,13 +288,13 @@ export class OrdersService {
       order.status as OrderStatus,
       OrderStatus.PAYMENT_CONFIRMED,
       requestId,
-      'system:payments',
+      "system:payments",
     );
   }
 
   async onPaymentFailed(orderId: string, requestId: string) {
     const order = await this.db.order.findUnique({ where: { id: orderId } });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
     assertValidOrderTransition(order.status as OrderStatus, OrderStatus.FAILED);
 
@@ -256,7 +309,7 @@ export class OrdersService {
       order.status as OrderStatus,
       OrderStatus.FAILED,
       requestId,
-      'system:payments',
+      "system:payments",
     );
   }
 
@@ -264,9 +317,12 @@ export class OrdersService {
 
   async onMintSubmitted(orderId: string, requestId: string) {
     const order = await this.db.order.findUnique({ where: { id: orderId } });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
-    assertValidOrderTransition(order.status as OrderStatus, OrderStatus.MINTING);
+    assertValidOrderTransition(
+      order.status as OrderStatus,
+      OrderStatus.MINTING,
+    );
 
     await this.db.order.update({
       where: { id: orderId },
@@ -279,15 +335,18 @@ export class OrdersService {
       order.status as OrderStatus,
       OrderStatus.MINTING,
       requestId,
-      'system:mint',
+      "system:mint",
     );
   }
 
   async onMintConfirmed(orderId: string, requestId: string) {
     const order = await this.db.order.findUnique({ where: { id: orderId } });
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
-    assertValidOrderTransition(order.status as OrderStatus, OrderStatus.COMPLETED);
+    assertValidOrderTransition(
+      order.status as OrderStatus,
+      OrderStatus.COMPLETED,
+    );
 
     await this.db.$transaction(async (tx) => {
       await tx.order.update({
@@ -311,7 +370,7 @@ export class OrdersService {
       order.status as OrderStatus,
       OrderStatus.COMPLETED,
       requestId,
-      'system:mint',
+      "system:mint",
     );
   }
 
@@ -321,7 +380,7 @@ export class OrdersService {
     return this.db.order.findMany({
       where: status ? { status } : undefined,
       include: { payment: true, mintRequest: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: Math.min(limit, 200),
       skip: offset,
     });
@@ -337,12 +396,15 @@ export class OrdersService {
     requestId: string,
     actorId: string,
   ) {
-    const action = fromStatus === null ? AuditAction.ORDER_CREATED : AuditAction.ORDER_STATUS_CHANGED;
+    const action =
+      fromStatus === null
+        ? AuditAction.ORDER_CREATED
+        : AuditAction.ORDER_STATUS_CHANGED;
 
     await this.audit.emit({
       actorId,
       action,
-      resource: 'order',
+      resource: "order",
       resourceId: orderId,
       before: fromStatus ? { status: fromStatus } : null,
       after: { status: toStatus },
@@ -350,8 +412,10 @@ export class OrdersService {
     });
 
     await this.kafka.publish(
-      fromStatus === null ? KafkaTopic.ORDER_CREATED : KafkaTopic.ORDER_STATUS_CHANGED,
-      fromStatus === null ? 'ORDER_CREATED' : 'ORDER_STATUS_CHANGED',
+      fromStatus === null
+        ? KafkaTopic.ORDER_CREATED
+        : KafkaTopic.ORDER_STATUS_CHANGED,
+      fromStatus === null ? "ORDER_CREATED" : "ORDER_STATUS_CHANGED",
       { orderId, userId, fromStatus, toStatus },
       { requestId, actorId },
     );

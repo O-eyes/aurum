@@ -5,9 +5,9 @@ import {
   HttpException,
   HttpStatus,
   Logger,
-} from '@nestjs/common';
-import { FastifyReply, FastifyRequest } from 'fastify';
-import { REQUEST_ID_HEADER } from '../middleware/request-id.middleware';
+} from "@nestjs/common";
+import { FastifyReply, FastifyRequest } from "fastify";
+import { REQUEST_ID_HEADER } from "../middleware/request-id.middleware";
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -37,11 +37,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       exception instanceof HttpException ? exception.getResponse() : null;
 
     const message =
-      typeof response === 'string'
+      typeof response === "string"
         ? response
-        : typeof response === 'object' && response !== null && 'message' in response
+        : typeof response === "object" &&
+            response !== null &&
+            "message" in response
           ? (response as { message: string }).message
-          : 'Internal server error';
+          : "Internal server error";
 
     reply.status(status).send({
       statusCode: status,

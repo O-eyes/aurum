@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { request, type AuditEvent } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { request, type AuditEvent } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 
 function fetchAuditLog(): Promise<AuditEvent[]> {
-  return request<AuditEvent[]>('/audit');
+  return request<AuditEvent[]>("/audit");
 }
 
 export default function AuditPage() {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['audit-log'],
+    queryKey: ["audit-log"],
     queryFn: fetchAuditLog,
     refetchInterval: 60_000,
   });
@@ -50,9 +50,13 @@ export default function AuditPage() {
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
           </div>
         ) : error ? (
-          <p className="py-8 text-center text-sm text-red-500">Failed to load audit log</p>
+          <p className="py-8 text-center text-sm text-red-500">
+            Failed to load audit log
+          </p>
         ) : !filtered.length ? (
-          <p className="py-8 text-center text-sm text-gray-400">No events found</p>
+          <p className="py-8 text-center text-sm text-gray-400">
+            No events found
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -67,7 +71,10 @@ export default function AuditPage() {
               </thead>
               <tbody>
                 {filtered.map((event) => (
-                  <tr key={event.id} className="border-b border-gray-50 hover:bg-gray-50 font-mono">
+                  <tr
+                    key={event.id}
+                    className="border-b border-gray-50 hover:bg-gray-50 font-mono"
+                  >
                     <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">
                       {formatDate(event.createdAt)}
                     </td>
@@ -77,13 +84,17 @@ export default function AuditPage() {
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-gray-500 max-w-[120px] truncate">
-                      {event.actorId ? event.actorId.slice(0, 8) + '…' : '—'}
+                      {event.actorId ? event.actorId.slice(0, 8) + "…" : "—"}
                     </td>
                     <td className="px-4 py-2.5 text-gray-500">
-                      <span className="text-gray-400">{event.resource}:</span>{' '}
-                      {event.resourceId ? event.resourceId.slice(0, 8) + '…' : '—'}
+                      <span className="text-gray-400">{event.resource}:</span>{" "}
+                      {event.resourceId
+                        ? event.resourceId.slice(0, 8) + "…"
+                        : "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-gray-400">{event.ipAddress ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-gray-400">
+                      {event.ipAddress ?? "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

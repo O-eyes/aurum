@@ -1,9 +1,13 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@prisma/client';
-import { RedisService } from '../redis/redis.service';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Prisma } from "@prisma/client";
+import { RedisService } from "../redis/redis.service";
 
-const CACHE_KEY = 'gold:price:usd';
+const CACHE_KEY = "gold:price:usd";
 const CACHE_TTL_SECONDS = 300; // 5-minute cache — stale price would cause loss
 
 @Injectable()
@@ -16,8 +20,8 @@ export class GoldPriceService {
     private readonly config: ConfigService,
     private readonly redis: RedisService,
   ) {
-    this.apiUrl = config.get<string>('goldbod.apiUrl') ?? '';
-    this.apiKey = config.get<string>('goldbod.apiKey') ?? '';
+    this.apiUrl = config.get<string>("goldbod.apiUrl") ?? "";
+    this.apiKey = config.get<string>("goldbod.apiKey") ?? "";
   }
 
   async getCurrentPriceUsd(): Promise<Prisma.Decimal> {
@@ -39,12 +43,12 @@ export class GoldPriceService {
   private async fetchFromGoldbod(): Promise<Prisma.Decimal> {
     if (!this.apiUrl || !this.apiKey) {
       throw new ServiceUnavailableException(
-        'Gold price feed not configured. Set GOLDBOD_API_URL and GOLDBOD_API_KEY.',
+        "Gold price feed not configured. Set GOLDBOD_API_URL and GOLDBOD_API_KEY.",
       );
     }
 
     const response = await fetch(`${this.apiUrl}/spot/XAU/USD`, {
-      headers: { 'x-api-key': this.apiKey, Accept: 'application/json' },
+      headers: { "x-api-key": this.apiKey, Accept: "application/json" },
       signal: AbortSignal.timeout(8_000),
     });
 

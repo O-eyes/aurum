@@ -1,14 +1,23 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { auth, users, type UserProfile } from '@/lib/api';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { auth, users, type UserProfile } from "@/lib/api";
 
 interface AuthContextValue {
   user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithOtp: (phone: string, code: string) => Promise<{ isNewUser: boolean }>;
+  loginWithOtp: (
+    phone: string,
+    code: string,
+  ) => Promise<{ isNewUser: boolean }>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   devLogin: () => void;
@@ -22,7 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     const token = auth.getAccessToken();
-    if (!token) { setIsLoading(false); return; }
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const profile = await users.me();
       setUser(profile);
@@ -34,7 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await auth.login({ email, password });
@@ -54,20 +68,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const devLogin = useCallback(() => {
     setUser({
-      id: 'dev-user',
-      email: 'dev@aurum.local',
+      id: "dev-user",
+      email: "dev@aurum.local",
       phone: null,
-      firstName: 'Dev',
-      lastName: 'Investor',
-      roles: ['USER'],
-      kycStatus: 'APPROVED',
+      firstName: "Dev",
+      lastName: "Investor",
+      roles: ["USER"],
+      kycStatus: "APPROVED",
       createdAt: new Date().toISOString(),
     });
   }, []);
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: !!user, login, loginWithOtp, logout, refresh, devLogin }}
+      value={{
+        user,
+        isLoading,
+        isAuthenticated: !!user,
+        login,
+        loginWithOtp,
+        logout,
+        refresh,
+        devLogin,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -76,6 +99,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

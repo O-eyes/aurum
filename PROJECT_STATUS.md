@@ -36,41 +36,42 @@ aurum/
 
 ### Backend API (`services/api`)
 
-| Area | Status | Notes |
-|------|--------|-------|
-| Project scaffold | ✅ Done | NestJS + Fastify, global guards/filters/interceptors, Helmet, CORS, rate limiting |
-| JWT auth (email/password) | ✅ Done | Register → verify email → login/logout, refresh tokens, JWT blacklist on logout |
-| SIWE wallet auth | ✅ Done | Challenge/verify flow, nonce stored in Redis, wallet linking to user accounts |
-| User profiles & wallets | ✅ Done | Profile retrieval, multiple wallets per user, wallet removal with audit trail |
-| KYC module | ✅ Done | Full state machine (PENDING → UNDER_REVIEW → APPROVED/REJECTED/NEEDS_REVIEW), compliance officer review endpoints, webhook handler, KYC history |
-| Audit event system | ✅ Done | Append-only audit log, 20+ action types, before/after snapshots, IP/UA capture, Kafka fan-out |
-| Kafka event bus | ✅ Done | KRaft-mode Kafka, structured message format, topics for every domain event |
-| Redis service | ✅ Done | Nonce storage, JWT blacklist, generic key-value with TTL |
-| Database layer | ✅ Done | Prisma schema covering all entities, Postgres 16 |
-| Observability | ✅ Done | Prometheus metrics endpoint, Loki log aggregation, Grafana dashboards (infra only) |
-| Request traceability | ✅ Done | Request ID middleware, audit interceptor, structured logging |
-| Role-based access | ✅ Done | USER, ADMIN, COMPLIANCE, TREASURY, SYSTEM roles enforced via guards |
-| Gold price feed | ✅ Done | GoldBod API integration with 5-min Redis cache; `GoldPriceService.refresh()` for ops |
-| Ledger module | ✅ Done | `credit()`, `debit()` with before/after balance snapshots; composable inside Prisma transactions |
-| Orders module | ✅ Done | Create BUY/SELL with KYC gate + idempotency; full state machine; Kafka + audit events; ops list endpoint |
-| Payments — Paystack card | ✅ Done | `POST /orders/:id/pay/card` → Paystack initialize; webhook confirms payment; drives order state |
-| Payments — Mobile money | ✅ Done | `POST /orders/:id/pay/mobile-money` (MTN/Vodafone/Tigo/Airtel via Paystack Charge API); HMAC-SHA512 webhook verification |
-| Mint module | ✅ Done | viem hot-wallet submits `mint()` on AurumToken; MintRequest tracked with txHash; `confirmMint` credits ledger |
-| Burn/redemption module | ✅ Done | `createBurnRequest` returns on-chain call for user to sign; `confirmBurn` processes txHash |
-| Mint confirmation automation | ✅ Done | `MintConfirmatorService` cron (every 30s) auto-confirms/fails SUBMITTED mint + burn txs on-chain |
-| Reserve snapshots | ✅ Done | Manual (`POST /reserve/snapshot`) + hourly cron; GoldBod vault for gold oz; on-chain or ledger totalSupply; Kafka backing-ratio alert |
-| Paystack transfers / SELL payout | ✅ Done | `PayoutsService`: Paystack recipient creation, transfer initiation, `transfer.*` webhook handling, ledger debit |
-| Sumsub KYC provider | ✅ Done | HMAC-SHA256 request signing, applicant + SDK token creation, webhook verification, review status mapping |
+| Area                             | Status  | Notes                                                                                                                                           |
+| -------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project scaffold                 | ✅ Done | NestJS + Fastify, global guards/filters/interceptors, Helmet, CORS, rate limiting                                                               |
+| JWT auth (email/password)        | ✅ Done | Register → verify email → login/logout, refresh tokens, JWT blacklist on logout                                                                 |
+| SIWE wallet auth                 | ✅ Done | Challenge/verify flow, nonce stored in Redis, wallet linking to user accounts                                                                   |
+| User profiles & wallets          | ✅ Done | Profile retrieval, multiple wallets per user, wallet removal with audit trail                                                                   |
+| KYC module                       | ✅ Done | Full state machine (PENDING → UNDER_REVIEW → APPROVED/REJECTED/NEEDS_REVIEW), compliance officer review endpoints, webhook handler, KYC history |
+| Audit event system               | ✅ Done | Append-only audit log, 20+ action types, before/after snapshots, IP/UA capture, Kafka fan-out                                                   |
+| Kafka event bus                  | ✅ Done | KRaft-mode Kafka, structured message format, topics for every domain event                                                                      |
+| Redis service                    | ✅ Done | Nonce storage, JWT blacklist, generic key-value with TTL                                                                                        |
+| Database layer                   | ✅ Done | Prisma schema covering all entities, Postgres 16                                                                                                |
+| Observability                    | ✅ Done | Prometheus metrics endpoint, Loki log aggregation, Grafana dashboards (infra only)                                                              |
+| Request traceability             | ✅ Done | Request ID middleware, audit interceptor, structured logging                                                                                    |
+| Role-based access                | ✅ Done | USER, ADMIN, COMPLIANCE, TREASURY, SYSTEM roles enforced via guards                                                                             |
+| Gold price feed                  | ✅ Done | GoldBod API integration with 5-min Redis cache; `GoldPriceService.refresh()` for ops                                                            |
+| Ledger module                    | ✅ Done | `credit()`, `debit()` with before/after balance snapshots; composable inside Prisma transactions                                                |
+| Orders module                    | ✅ Done | Create BUY/SELL with KYC gate + idempotency; full state machine; Kafka + audit events; ops list endpoint                                        |
+| Payments — Paystack card         | ✅ Done | `POST /orders/:id/pay/card` → Paystack initialize; webhook confirms payment; drives order state                                                 |
+| Payments — Mobile money          | ✅ Done | `POST /orders/:id/pay/mobile-money` (MTN/Vodafone/Tigo/Airtel via Paystack Charge API); HMAC-SHA512 webhook verification                        |
+| Mint module                      | ✅ Done | viem hot-wallet submits `mint()` on AurumToken; MintRequest tracked with txHash; `confirmMint` credits ledger                                   |
+| Burn/redemption module           | ✅ Done | `createBurnRequest` returns on-chain call for user to sign; `confirmBurn` processes txHash                                                      |
+| Mint confirmation automation     | ✅ Done | `MintConfirmatorService` cron (every 30s) auto-confirms/fails SUBMITTED mint + burn txs on-chain                                                |
+| Reserve snapshots                | ✅ Done | Manual (`POST /reserve/snapshot`) + hourly cron; GoldBod vault for gold oz; on-chain or ledger totalSupply; Kafka backing-ratio alert           |
+| Paystack transfers / SELL payout | ✅ Done | `PayoutsService`: Paystack recipient creation, transfer initiation, `transfer.*` webhook handling, ledger debit                                 |
+| Sumsub KYC provider              | ✅ Done | HMAC-SHA256 request signing, applicant + SDK token creation, webhook verification, review status mapping                                        |
 
 ### Smart Contracts (`contracts/`)
 
-| Contract | Status | Notes |
-|----------|--------|-------|
+| Contract            | Status  | Notes                                                                                                                |
+| ------------------- | ------- | -------------------------------------------------------------------------------------------------------------------- |
 | AurumToken (ERC-20) | ✅ Done | UUPS upgradeable, mintable by authorized hot-wallet, burnable (redemption), pausable, order ID traceability on-chain |
 
 ### Database Schema (`packages/db`)
 
 All tables defined and migrated:
+
 - `users`, `wallets`, `sessions`, `email_verifications`
 - `kyc_profiles`, `kyc_history`
 - `orders`, `payments`, `mint_requests`, `burn_requests`
@@ -88,10 +89,10 @@ All tables defined and migrated:
 
 ## In Progress / Partially Built
 
-| Area | Status | What Exists | What's Missing |
-|------|--------|-------------|----------------|
-| Frontend apps | ✅ Done | All 3 portals fully built — auth, KYC, orders, dashboard, payout flows | — |
-| Email delivery | 🟡 Logging only | Verification token generation, Mailhog for local | SMTP/transactional email provider integration |
+| Area           | Status          | What Exists                                                            | What's Missing                                |
+| -------------- | --------------- | ---------------------------------------------------------------------- | --------------------------------------------- |
+| Frontend apps  | ✅ Done         | All 3 portals fully built — auth, KYC, orders, dashboard, payout flows | —                                             |
+| Email delivery | 🟡 Logging only | Verification token generation, Mailhog for local                       | SMTP/transactional email provider integration |
 
 ---
 
@@ -188,24 +189,24 @@ GET    /metrics
 
 ## Kafka Topics
 
-| Topic | Events |
-|-------|--------|
-| `user.events` | user.created, email.verified |
-| `wallet.events` | wallet.linked |
-| `kyc.events` | kyc.status-changed, kyc.approved |
-| `order.events` | order.created, order.status-changed |
-| `token.ops` | mint.requested, mint.confirmed, burn.requested, burn.confirmed |
-| `payment.events` | payment.confirmed, payment.failed |
-| `reserve.alerts` | backing-ratio.low |
-| `audit.events` | all audit actions (SIEM fan-out) |
+| Topic            | Events                                                         |
+| ---------------- | -------------------------------------------------------------- |
+| `user.events`    | user.created, email.verified                                   |
+| `wallet.events`  | wallet.linked                                                  |
+| `kyc.events`     | kyc.status-changed, kyc.approved                               |
+| `order.events`   | order.created, order.status-changed                            |
+| `token.ops`      | mint.requested, mint.confirmed, burn.requested, burn.confirmed |
+| `payment.events` | payment.confirmed, payment.failed                              |
+| `reserve.alerts` | backing-ratio.low                                              |
+| `audit.events`   | all audit actions (SIEM fan-out)                               |
 
 ---
 
 ## Change Log
 
-| Date | Change |
-|------|--------|
-| 2026-06-10 | Initial PROJECT_STATUS.md created — analysis of existing build, full roadmap drafted |
-| 2026-06-10 | Backend layer 1 complete — Gold price (GoldBod+Redis), Ledger, Orders, Payments (Paystack card + mobile money), Mint/Burn (viem hot-wallet). Prisma schema extended. 20+ new files. |
-| 2026-06-11 | Backend layer 2 complete — Reserve snapshots (manual + hourly cron), Mint confirmation automation (30s cron), Paystack transfers/SELL payout, Sumsub KYC provider. Backend feature-complete. |
+| Date       | Change                                                                                                                                                                                                                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-10 | Initial PROJECT_STATUS.md created — analysis of existing build, full roadmap drafted                                                                                                                                                                                                                 |
+| 2026-06-10 | Backend layer 1 complete — Gold price (GoldBod+Redis), Ledger, Orders, Payments (Paystack card + mobile money), Mint/Burn (viem hot-wallet). Prisma schema extended. 20+ new files.                                                                                                                  |
+| 2026-06-11 | Backend layer 2 complete — Reserve snapshots (manual + hourly cron), Mint confirmation automation (30s cron), Paystack transfers/SELL payout, Sumsub KYC provider. Backend feature-complete.                                                                                                         |
 | 2026-06-11 | All 3 frontend portals built — Investor portal (auth, KYC, buy/sell, dashboard, Paystack payment flows, SIWE wallet), Ops console (KYC review, orders, reserve, audit log, users), Institutional portal (orders, reporting + CSV export, KYC). Tailwind, React Hook Form, TanStack Query throughout. |

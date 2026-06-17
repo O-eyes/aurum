@@ -3,7 +3,7 @@ export interface KafkaMessage<T = unknown> {
   eventId: string;
   eventType: string;
   occurredAt: string;
-  version: '1.0';
+  version: "1.0";
   payload: T;
   metadata: {
     requestId: string;

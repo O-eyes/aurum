@@ -1,4 +1,4 @@
-export const PAYMENT_PROVIDER = Symbol('PAYMENT_PROVIDER');
+export const PAYMENT_PROVIDER = Symbol("PAYMENT_PROVIDER");
 
 /**
  * Split-at-source instruction. The subaccount (GoldBod) receives the remainder
@@ -10,7 +10,7 @@ export const PAYMENT_PROVIDER = Symbol('PAYMENT_PROVIDER');
 export interface PaymentSplit {
   subaccountCode: string;
   transactionChargeSmallestUnit: number;
-  bearer: 'account' | 'subaccount';
+  bearer: "account" | "subaccount";
 }
 
 export interface CardInitResult {
@@ -21,14 +21,14 @@ export interface CardInitResult {
 
 export interface MobileMoneyInitResult {
   reference: string;
-  status: 'pay_offline' | 'send_otp' | 'success';
+  status: "pay_offline" | "send_otp" | "success";
   displayText: string;
   requiresOtp: boolean;
 }
 
 export interface PaymentWebhookEvent {
   reference: string;
-  status: 'success' | 'failed' | 'reversed';
+  status: "success" | "failed" | "reversed";
   amount: number;
   currency: string;
   channel: string;

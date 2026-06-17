@@ -1,7 +1,10 @@
-import { BadRequestException } from '@nestjs/common';
-import { OrderStatus, VALID_ORDER_TRANSITIONS } from '@aurum/types';
+import { BadRequestException } from "@nestjs/common";
+import { OrderStatus, VALID_ORDER_TRANSITIONS } from "@aurum/types";
 
-export function assertValidOrderTransition(from: OrderStatus, to: OrderStatus): void {
+export function assertValidOrderTransition(
+  from: OrderStatus,
+  to: OrderStatus,
+): void {
   const allowed = VALID_ORDER_TRANSITIONS[from];
   if (!allowed?.includes(to)) {
     throw new BadRequestException(
@@ -10,6 +13,9 @@ export function assertValidOrderTransition(from: OrderStatus, to: OrderStatus): 
   }
 }
 
-export function canTransitionOrder(from: OrderStatus, to: OrderStatus): boolean {
+export function canTransitionOrder(
+  from: OrderStatus,
+  to: OrderStatus,
+): boolean {
   return VALID_ORDER_TRANSITIONS[from]?.includes(to) ?? false;
 }

@@ -1,16 +1,20 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { createHmac, timingSafeEqual } from 'crypto';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
+import { createHmac, timingSafeEqual } from "crypto";
 import type {
   CardInitResult,
   MobileMoneyInitResult,
   PaymentWebhookEvent,
   PaymentProvider,
   PaymentSplit,
-} from '../payment.provider.interface';
+} from "../payment.provider.interface";
 
 @Injectable()
 export class PaystackProvider implements PaymentProvider {
-  readonly name = 'paystack';
+  readonly name = "paystack";
   private readonly logger = new Logger(PaystackProvider.name);
 
   constructor(
@@ -35,7 +39,7 @@ export class PaystackProvider implements PaymentProvider {
       currency: params.currency,
       reference: params.reference,
       callback_url: params.callbackUrl,
-      channels: ['card'],
+      channels: ["card"],
       metadata: params.metadata ?? {},
       ...this.splitFields(params.split),
     };
@@ -44,7 +48,7 @@ export class PaystackProvider implements PaymentProvider {
       authorization_url: string;
       access_code: string;
       reference: string;
-    }>('/transaction/initialize', body);
+    }>("/transaction/initialize", body);
 
     return {
       reference: data.reference,
@@ -82,20 +86,20 @@ export class PaystackProvider implements PaymentProvider {
       reference: string;
       status: string;
       display_text?: string;
-    }>('/charge', body);
+    }>("/charge", body);
 
-    const requiresOtp = data.status === 'send_otp';
+    const requiresOtp = data.status === "send_otp";
     const displayText =
       data.display_text ??
-      (data.status === 'pay_offline'
-        ? 'A payment prompt has been sent to your phone. Please approve to complete your purchase.'
-        : data.status === 'send_otp'
-          ? 'Enter the OTP sent to your phone to confirm this payment.'
-          : 'Payment initiated.');
+      (data.status === "pay_offline"
+        ? "A payment prompt has been sent to your phone. Please approve to complete your purchase."
+        : data.status === "send_otp"
+          ? "Enter the OTP sent to your phone to confirm this payment."
+          : "Payment initiated.");
 
     return {
       reference: data.reference ?? params.reference,
-      status: data.status as MobileMoneyInitResult['status'],
+      status: data.status as MobileMoneyInitResult["status"],
       displayText,
       requiresOtp,
     };
@@ -105,11 +109,11 @@ export class PaystackProvider implements PaymentProvider {
 
   verifyWebhookSignature(rawBody: string, signature: string): boolean {
     if (!signature) return false;
-    const hash = createHmac('sha512', this.secretKey)
+    const hash = createHmac("sha512", this.secretKey)
       .update(rawBody)
-      .digest('hex');
-    const expected = Buffer.from(hash, 'utf8');
-    const received = Buffer.from(signature, 'utf8');
+      .digest("hex");
+    const expected = Buffer.from(hash, "utf8");
+    const received = Buffer.from(signature, "utf8");
     if (expected.length !== received.length) return false;
     return timingSafeEqual(expected, received);
   }
@@ -118,11 +122,11 @@ export class PaystackProvider implements PaymentProvider {
     const p = payload as Record<string, any>;
     const data = p.data ?? {};
     return {
-      reference: data.reference ?? '',
+      reference: data.reference ?? "",
       status: this.mapEventStatus(p.event as string, data.status as string),
       amount: data.amount ?? 0,
-      currency: data.currency ?? 'USD',
-      channel: data.channel ?? 'unknown',
+      currency: data.currency ?? "USD",
+      channel: data.channel ?? "unknown",
       metadata: data.metadata ?? {},
     };
   }
@@ -141,7 +145,7 @@ export class PaystackProvider implements PaymentProvider {
 
     return {
       reference: data.reference,
-      status: data.status === 'success' ? 'success' : 'failed',
+      status: data.status === "success" ? "success" : "failed",
       amount: data.amount,
       currency: data.currency,
       channel: data.channel,
@@ -152,19 +156,22 @@ export class PaystackProvider implements PaymentProvider {
   // ── Transfers (payouts) ────────────────────────────────────────────────────
 
   async createTransferRecipient(params: {
-    type: 'nuban' | 'mobile_money' | 'ghipss' | 'basa';
+    type: "nuban" | "mobile_money" | "ghipss" | "basa";
     name: string;
     accountNumber: string;
     bankCode: string;
     currency: string;
   }): Promise<{ recipientCode: string }> {
-    const data = await this.post<{ recipient_code: string }>('/transferrecipient', {
-      type: params.type,
-      name: params.name,
-      account_number: params.accountNumber,
-      bank_code: params.bankCode,
-      currency: params.currency,
-    });
+    const data = await this.post<{ recipient_code: string }>(
+      "/transferrecipient",
+      {
+        type: params.type,
+        name: params.name,
+        account_number: params.accountNumber,
+        bank_code: params.bankCode,
+        currency: params.currency,
+      },
+    );
     return { recipientCode: data.recipient_code };
   }
 
@@ -175,30 +182,36 @@ export class PaystackProvider implements PaymentProvider {
     reason: string;
     currency: string;
   }): Promise<{ transferCode: string; status: string }> {
-    const data = await this.post<{ transfer_code: string; status: string }>('/transfer', {
-      source: 'balance',
-      amount: params.amountSmallestUnit,
-      recipient: params.recipientCode,
-      reference: params.reference,
-      reason: params.reason,
-      currency: params.currency,
-    });
+    const data = await this.post<{ transfer_code: string; status: string }>(
+      "/transfer",
+      {
+        source: "balance",
+        amount: params.amountSmallestUnit,
+        recipient: params.recipientCode,
+        reference: params.reference,
+        reason: params.reason,
+        currency: params.currency,
+      },
+    );
     return { transferCode: data.transfer_code, status: data.status };
   }
 
   parseTransferWebhookEvent(payload: unknown): {
     reference: string;
     transferCode: string;
-    status: 'success' | 'failed' | 'reversed';
+    status: "success" | "failed" | "reversed";
   } {
     const p = payload as Record<string, any>;
     const data = p.data ?? {};
-    const status: 'success' | 'failed' | 'reversed' =
-      p.event === 'transfer.success' ? 'success' :
-      p.event === 'transfer.reversed' ? 'reversed' : 'failed';
+    const status: "success" | "failed" | "reversed" =
+      p.event === "transfer.success"
+        ? "success"
+        : p.event === "transfer.reversed"
+          ? "reversed"
+          : "failed";
     return {
-      reference: data.reference ?? '',
-      transferCode: data.transfer_code ?? '',
+      reference: data.reference ?? "",
+      transferCode: data.transfer_code ?? "",
       status,
     };
   }
@@ -222,38 +235,53 @@ export class PaystackProvider implements PaymentProvider {
   // ── HTTP helpers ───────────────────────────────────────────────────────────
 
   private async post<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>('POST', path, body);
+    return this.request<T>("POST", path, body);
   }
 
   private async get<T>(path: string): Promise<T> {
-    return this.request<T>('GET', path, undefined);
+    return this.request<T>("GET", path, undefined);
   }
 
-  private async request<T>(method: string, path: string, body: unknown): Promise<T> {
+  private async request<T>(
+    method: string,
+    path: string,
+    body: unknown,
+  ): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${this.secretKey}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(15_000),
     });
 
-    const json = (await response.json()) as { status: boolean; message: string; data: T };
+    const json = (await response.json()) as {
+      status: boolean;
+      message: string;
+      data: T;
+    };
 
     if (!response.ok || !json.status) {
       this.logger.error(`Paystack ${method} ${path} failed: ${json.message}`);
-      throw new ServiceUnavailableException(`Payment provider error: ${json.message}`);
+      throw new ServiceUnavailableException(
+        `Payment provider error: ${json.message}`,
+      );
     }
 
     return json.data;
   }
 
-  private mapEventStatus(event: string, dataStatus: string): PaymentWebhookEvent['status'] {
-    if (event === 'charge.success' || dataStatus === 'success') return 'success';
-    if (event === 'charge.dispute.create' || dataStatus === 'reversed') return 'reversed';
-    return 'failed';
+  private mapEventStatus(
+    event: string,
+    dataStatus: string,
+  ): PaymentWebhookEvent["status"] {
+    if (event === "charge.success" || dataStatus === "success")
+      return "success";
+    if (event === "charge.dispute.create" || dataStatus === "reversed")
+      return "reversed";
+    return "failed";
   }
 }

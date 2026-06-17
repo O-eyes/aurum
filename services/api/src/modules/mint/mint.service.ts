@@ -4,8 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   ServiceUnavailableException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import {
   createWalletClient,
   createPublicClient,
@@ -14,22 +14,22 @@ import {
   keccak256,
   toBytes,
   type Chain,
-} from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { mainnet, sepolia } from 'viem/chains';
-import { Prisma } from '@prisma/client';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { KafkaService } from '../../infrastructure/kafka/kafka.service';
-import { AuditService } from '../audit/audit.service';
-import { OrdersService } from '../orders/orders.service';
-import { KafkaTopic } from '../../infrastructure/kafka/kafka.topics';
-import { AuditAction, MintBurnStatus, OrderStatus } from '@aurum/types';
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { mainnet, sepolia } from "viem/chains";
+import { Prisma } from "@prisma/client";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { KafkaService } from "../../infrastructure/kafka/kafka.service";
+import { AuditService } from "../audit/audit.service";
+import { OrdersService } from "../orders/orders.service";
+import { KafkaTopic } from "../../infrastructure/kafka/kafka.topics";
+import { AuditAction, MintBurnStatus, OrderStatus } from "@aurum/types";
 
 const AURUM_TOKEN_ABI = parseAbi([
-  'function mint(address to, uint256 amount, bytes32 orderId) external',
-  'function burnForRedemption(uint256 amount, bytes32 orderId) external',
-  'function paused() view returns (bool)',
-  'function balanceOf(address account) view returns (uint256)',
+  "function mint(address to, uint256 amount, bytes32 orderId) external",
+  "function burnForRedemption(uint256 amount, bytes32 orderId) external",
+  "function paused() view returns (bool)",
+  "function balanceOf(address account) view returns (uint256)",
 ]);
 
 @Injectable()
@@ -47,10 +47,12 @@ export class MintService {
     private readonly ordersService: OrdersService,
     private readonly config: ConfigService,
   ) {
-    this.rpcUrl = config.get<string>('blockchain.rpcUrl') ?? '';
-    this.chainId = config.get<number>('blockchain.chainId') ?? 1;
-    this.tokenAddress = (config.get<string>('blockchain.aurumTokenAddress') ?? '0x0000000000000000000000000000000000000000') as `0x${string}`;
-    this.minterPrivateKey = config.get<string>('blockchain.minterPrivateKey') ?? '';
+    this.rpcUrl = config.get<string>("blockchain.rpcUrl") ?? "";
+    this.chainId = config.get<number>("blockchain.chainId") ?? 1;
+    this.tokenAddress = (config.get<string>("blockchain.aurumTokenAddress") ??
+      "0x0000000000000000000000000000000000000000") as `0x${string}`;
+    this.minterPrivateKey =
+      config.get<string>("blockchain.minterPrivateKey") ?? "";
   }
 
   // ── Mint (called after payment confirmed) ─────────────────────────────────
@@ -63,7 +65,7 @@ export class MintService {
       include: { mintRequest: true },
     });
 
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
     if (order.status !== OrderStatus.PAYMENT_CONFIRMED) {
       throw new BadRequestException(
@@ -73,7 +75,10 @@ export class MintService {
 
     if (order.mintRequest) {
       // Already submitted — idempotent
-      return { txHash: order.mintRequest.txHash, status: order.mintRequest.status };
+      return {
+        txHash: order.mintRequest.txHash,
+        status: order.mintRequest.status,
+      };
     }
 
     const tokenAmountWei = this.toWei(order.tokenAmount as Prisma.Decimal);
@@ -81,13 +86,19 @@ export class MintService {
 
     const { walletClient, publicClient } = this.buildClients();
 
-    this.logger.log(`Submitting mint for order ${orderId}: ${order.tokenAmount} AURUM → ${order.walletAddress}`);
+    this.logger.log(
+      `Submitting mint for order ${orderId}: ${order.tokenAmount} AURUM → ${order.walletAddress}`,
+    );
 
     const txHash = await walletClient.writeContract({
       address: this.tokenAddress,
       abi: AURUM_TOKEN_ABI,
-      functionName: 'mint',
-      args: [order.walletAddress as `0x${string}`, tokenAmountWei, orderIdBytes32],
+      functionName: "mint",
+      args: [
+        order.walletAddress as `0x${string}`,
+        tokenAmountWei,
+        orderIdBytes32,
+      ],
     });
 
     this.logger.log(`Mint tx submitted: ${txHash}`);
@@ -106,19 +117,28 @@ export class MintService {
     await this.ordersService.onMintSubmitted(orderId, requestId);
 
     await this.audit.emit({
-      actorId: 'system:mint',
+      actorId: "system:mint",
       action: AuditAction.MINT_REQUESTED,
-      resource: 'mint_request',
+      resource: "mint_request",
       resourceId: mintRequest.id,
-      after: { txHash, walletAddress: order.walletAddress, tokenAmount: order.tokenAmount },
+      after: {
+        txHash,
+        walletAddress: order.walletAddress,
+        tokenAmount: order.tokenAmount,
+      },
       requestId,
     });
 
     await this.kafka.publish(
       KafkaTopic.MINT_REQUESTED,
-      'MINT_REQUESTED',
-      { orderId, mintRequestId: mintRequest.id, txHash, walletAddress: order.walletAddress },
-      { requestId, actorId: 'system:mint' },
+      "MINT_REQUESTED",
+      {
+        orderId,
+        mintRequestId: mintRequest.id,
+        txHash,
+        walletAddress: order.walletAddress,
+      },
+      { requestId, actorId: "system:mint" },
     );
 
     return { txHash, mintRequestId: mintRequest.id };
@@ -131,7 +151,7 @@ export class MintService {
       where: { id: mintRequestId },
     });
 
-    if (!mintRequest) throw new NotFoundException('Mint request not found');
+    if (!mintRequest) throw new NotFoundException("Mint request not found");
 
     if (mintRequest.status === MintBurnStatus.CONFIRMED) {
       return { status: MintBurnStatus.CONFIRMED };
@@ -151,13 +171,15 @@ export class MintService {
         const receipt = await publicClient.getTransactionReceipt({
           hash: mintRequest.txHash as `0x${string}`,
         });
-        if (receipt.status !== 'success') {
-          throw new BadRequestException('Transaction reverted on-chain');
+        if (receipt.status !== "success") {
+          throw new BadRequestException("Transaction reverted on-chain");
         }
         blockNumber = receipt.blockNumber;
       } catch (err: unknown) {
         if (err instanceof BadRequestException) throw err;
-        this.logger.warn(`Could not verify tx on-chain: ${(err as Error).message}`);
+        this.logger.warn(
+          `Could not verify tx on-chain: ${(err as Error).message}`,
+        );
       }
     }
 
@@ -173,19 +195,26 @@ export class MintService {
     await this.ordersService.onMintConfirmed(mintRequest.orderId, requestId);
 
     await this.audit.emit({
-      actorId: 'system:mint',
+      actorId: "system:mint",
       action: AuditAction.MINT_CONFIRMED,
-      resource: 'mint_request',
+      resource: "mint_request",
       resourceId: mintRequestId,
-      after: { txHash: mintRequest.txHash, blockNumber: blockNumber?.toString() },
+      after: {
+        txHash: mintRequest.txHash,
+        blockNumber: blockNumber?.toString(),
+      },
       requestId,
     });
 
     await this.kafka.publish(
       KafkaTopic.MINT_CONFIRMED,
-      'MINT_CONFIRMED',
-      { orderId: mintRequest.orderId, mintRequestId, txHash: mintRequest.txHash },
-      { requestId, actorId: 'system:mint' },
+      "MINT_CONFIRMED",
+      {
+        orderId: mintRequest.orderId,
+        mintRequestId,
+        txHash: mintRequest.txHash,
+      },
+      { requestId, actorId: "system:mint" },
     );
 
     return { status: MintBurnStatus.CONFIRMED, txHash: mintRequest.txHash };
@@ -199,7 +228,7 @@ export class MintService {
       include: { burnRequest: true },
     });
 
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
     if (order.burnRequest) return order.burnRequest;
 
     const burnRequest = await this.db.burnRequest.create({
@@ -214,16 +243,23 @@ export class MintService {
     await this.audit.emit({
       actorId: order.userId,
       action: AuditAction.BURN_REQUESTED,
-      resource: 'burn_request',
+      resource: "burn_request",
       resourceId: burnRequest.id,
-      after: { walletAddress: order.walletAddress, tokenAmount: order.tokenAmount },
+      after: {
+        walletAddress: order.walletAddress,
+        tokenAmount: order.tokenAmount,
+      },
       requestId,
     });
 
     await this.kafka.publish(
       KafkaTopic.BURN_REQUESTED,
-      'BURN_REQUESTED',
-      { orderId, burnRequestId: burnRequest.id, walletAddress: order.walletAddress },
+      "BURN_REQUESTED",
+      {
+        orderId,
+        burnRequestId: burnRequest.id,
+        walletAddress: order.walletAddress,
+      },
       { requestId, actorId: order.userId },
     );
 
@@ -232,7 +268,7 @@ export class MintService {
       burnRequest,
       onChainCall: {
         contractAddress: this.tokenAddress,
-        functionName: 'burnForRedemption',
+        functionName: "burnForRedemption",
         args: {
           amount: this.toWei(order.tokenAmount as Prisma.Decimal).toString(),
           orderId: this.uuidToBytes32(orderId),
@@ -242,21 +278,28 @@ export class MintService {
   }
 
   async confirmBurn(burnRequestId: string, txHash: string, requestId: string) {
-    const burnRequest = await this.db.burnRequest.findUnique({ where: { id: burnRequestId } });
-    if (!burnRequest) throw new NotFoundException('Burn request not found');
-    if (burnRequest.status === MintBurnStatus.CONFIRMED) return { status: MintBurnStatus.CONFIRMED };
+    const burnRequest = await this.db.burnRequest.findUnique({
+      where: { id: burnRequestId },
+    });
+    if (!burnRequest) throw new NotFoundException("Burn request not found");
+    if (burnRequest.status === MintBurnStatus.CONFIRMED)
+      return { status: MintBurnStatus.CONFIRMED };
 
     await this.db.burnRequest.update({
       where: { id: burnRequestId },
-      data: { status: MintBurnStatus.SUBMITTED, txHash, submittedAt: new Date() },
+      data: {
+        status: MintBurnStatus.SUBMITTED,
+        txHash,
+        submittedAt: new Date(),
+      },
     });
 
     await this.ordersService.onMintSubmitted(burnRequest.orderId, requestId);
 
     await this.audit.emit({
-      actorId: 'system:burn',
+      actorId: "system:burn",
       action: AuditAction.BURN_CONFIRMED,
-      resource: 'burn_request',
+      resource: "burn_request",
       resourceId: burnRequestId,
       after: { txHash },
       requestId,
@@ -264,9 +307,9 @@ export class MintService {
 
     await this.kafka.publish(
       KafkaTopic.BURN_CONFIRMED,
-      'BURN_CONFIRMED',
+      "BURN_CONFIRMED",
       { orderId: burnRequest.orderId, burnRequestId, txHash },
-      { requestId, actorId: 'system:burn' },
+      { requestId, actorId: "system:burn" },
     );
 
     return { status: MintBurnStatus.SUBMITTED, txHash };
@@ -297,21 +340,25 @@ export class MintService {
   }
 
   private assertBlockchainConfigured() {
-    if (!this.rpcUrl || !this.minterPrivateKey || this.tokenAddress === '0x0000000000000000000000000000000000000000') {
+    if (
+      !this.rpcUrl ||
+      !this.minterPrivateKey ||
+      this.tokenAddress === "0x0000000000000000000000000000000000000000"
+    ) {
       throw new ServiceUnavailableException(
-        'Blockchain is not configured. Set RPC_URL, MINTER_PRIVATE_KEY, and AURUM_TOKEN_ADDRESS.',
+        "Blockchain is not configured. Set RPC_URL, MINTER_PRIVATE_KEY, and AURUM_TOKEN_ADDRESS.",
       );
     }
   }
 
   private toWei(amount: Prisma.Decimal): bigint {
     // amount has up to 8 decimal places; token uses 18 decimals
-    return BigInt(amount.times(new Prisma.Decimal('1e18')).toFixed(0));
+    return BigInt(amount.times(new Prisma.Decimal("1e18")).toFixed(0));
   }
 
   private uuidToBytes32(orderId: string): `0x${string}` {
     // UUID is 16 bytes; encode as UTF-8 bytes and left-pad to 32 bytes
-    const hex = orderId.replace(/-/g, ''); // 32 hex chars = 16 bytes
-    return `0x${hex.padStart(64, '0')}` as `0x${string}`;
+    const hex = orderId.replace(/-/g, ""); // 32 hex chars = 16 bytes
+    return `0x${hex.padStart(64, "0")}` as `0x${string}`;
   }
 }

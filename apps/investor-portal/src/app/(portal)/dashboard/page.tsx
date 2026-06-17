@@ -1,49 +1,64 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { users, orders, reserve } from '@/lib/api';
-import { useAuth } from '@/contexts/auth-context';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
-import { Alert } from '@/components/ui/alert';
-import { formatUsd, formatOz, formatDate, formatGhs, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/utils';
-import { useGhsRate } from '@/hooks/useGhsRate';
-import Link from 'next/link';
-import { TrendingUp, Coins, DollarSign, ShieldCheck, ArrowRight } from 'lucide-react';
+import { useQuery } from "@tanstack/react-query";
+import { users, orders, reserve } from "@/lib/api";
+import { useAuth } from "@/contexts/auth-context";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { Alert } from "@/components/ui/alert";
+import {
+  formatUsd,
+  formatOz,
+  formatDate,
+  formatGhs,
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_COLORS,
+} from "@/lib/utils";
+import { useGhsRate } from "@/hooks/useGhsRate";
+import Link from "next/link";
+import {
+  TrendingUp,
+  Coins,
+  DollarSign,
+  ShieldCheck,
+  ArrowRight,
+} from "lucide-react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
 
   const { data: balance, isLoading: balanceLoading } = useQuery({
-    queryKey: ['balance'],
+    queryKey: ["balance"],
     queryFn: users.balance,
     refetchInterval: 60_000,
   });
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery({
-    queryKey: ['orders'],
+    queryKey: ["orders"],
     queryFn: orders.list,
   });
 
   const { data: snapshot } = useQuery({
-    queryKey: ['reserve-snapshot'],
+    queryKey: ["reserve-snapshot"],
     queryFn: reserve.latest,
     staleTime: 300_000,
   });
 
   const ghsRate = useGhsRate();
-  const kycApproved = user?.kycStatus === 'APPROVED';
+  const kycApproved = user?.kycStatus === "APPROVED";
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+      <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+        Dashboard
+      </h1>
 
       {/* KYC banner */}
       {!kycApproved && (
         <Alert variant="warning" title="Identity verification required">
-          Complete KYC to unlock buying and selling gold tokens.{' '}
+          Complete KYC to unlock buying and selling gold tokens.{" "}
           <Link href="/kyc" className="font-medium underline">
             Verify now →
           </Link>
@@ -54,25 +69,43 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           title="Token Balance"
-          value={balanceLoading ? null : `${parseFloat(balance?.balance ?? '0').toFixed(4)} AUR`}
+          value={
+            balanceLoading
+              ? null
+              : `${parseFloat(balance?.balance ?? "0").toFixed(4)} AUR`
+          }
           sub="Gold tokens held"
           icon={<Coins className="h-5 w-5 text-gold-500" />}
         />
         <StatCard
           title="Portfolio Value"
-          value={balanceLoading ? null : ghsRate ? formatGhs(balance?.balanceUsd ?? '0', ghsRate) : formatUsd(balance?.balanceUsd ?? '0')}
-          sub={ghsRate ? `≈ ${formatUsd(balance?.balanceUsd ?? '0')} · Gold: ${formatUsd(balance?.goldPriceUsd ?? '0')}/oz` : `Gold price: ${formatUsd(balance?.goldPriceUsd ?? '0')}/oz`}
+          value={
+            balanceLoading
+              ? null
+              : ghsRate
+                ? formatGhs(balance?.balanceUsd ?? "0", ghsRate)
+                : formatUsd(balance?.balanceUsd ?? "0")
+          }
+          sub={
+            ghsRate
+              ? `≈ ${formatUsd(balance?.balanceUsd ?? "0")} · Gold: ${formatUsd(balance?.goldPriceUsd ?? "0")}/oz`
+              : `Gold price: ${formatUsd(balance?.goldPriceUsd ?? "0")}/oz`
+          }
           icon={<DollarSign className="h-5 w-5 text-green-500" />}
         />
         <StatCard
           title="Reserve Ratio"
-          value={snapshot ? `${(parseFloat(snapshot.backingRatio) * 100).toFixed(2)}%` : '—'}
+          value={
+            snapshot
+              ? `${(parseFloat(snapshot.backingRatio) * 100).toFixed(2)}%`
+              : "—"
+          }
           sub="Gold backing"
           icon={<TrendingUp className="h-5 w-5 text-blue-500" />}
           highlight={
             snapshot && parseFloat(snapshot.backingRatio) >= 0.98
-              ? 'text-green-600'
-              : 'text-red-600'
+              ? "text-green-600"
+              : "text-red-600"
           }
         />
       </div>
@@ -126,7 +159,9 @@ export default function DashboardPage() {
               <Spinner />
             </div>
           ) : !recentOrders?.length ? (
-            <p className="py-8 text-center text-sm text-gray-500">No orders yet</p>
+            <p className="py-8 text-center text-sm text-gray-500">
+              No orders yet
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -147,15 +182,21 @@ export default function DashboardPage() {
                     <td className="px-6 py-3">
                       <span
                         className={`font-medium ${
-                          order.type === 'BUY' ? 'text-green-600' : 'text-red-600'
+                          order.type === "BUY"
+                            ? "text-green-600"
+                            : "text-red-600"
                         }`}
                       >
                         {order.type}
                       </span>
                     </td>
                     <td className="px-6 py-3 text-gray-900">
-                      {ghsRate ? formatGhs(order.amountUsd, ghsRate) : formatUsd(order.amountUsd)}
-                      <p className="text-xs text-gray-400 mt-0.5">{formatUsd(order.amountUsd)}</p>
+                      {ghsRate
+                        ? formatGhs(order.amountUsd, ghsRate)
+                        : formatUsd(order.amountUsd)}
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {formatUsd(order.amountUsd)}
+                      </p>
                     </td>
                     <td className="px-6 py-3 text-gray-600">
                       {parseFloat(order.tokenAmount).toFixed(4)} AUR
@@ -163,13 +204,16 @@ export default function DashboardPage() {
                     <td className="px-6 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          ORDER_STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-700'
+                          ORDER_STATUS_COLORS[order.status] ??
+                          "bg-gray-100 text-gray-700"
                         }`}
                       >
                         {ORDER_STATUS_LABELS[order.status] ?? order.status}
                       </span>
                     </td>
-                    <td className="px-6 py-3 text-gray-500">{formatDate(order.createdAt)}</td>
+                    <td className="px-6 py-3 text-gray-500">
+                      {formatDate(order.createdAt)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -203,7 +247,9 @@ function StatCard({
           {value === null ? (
             <Spinner className="h-4 w-4 mt-1" />
           ) : (
-            <p className={`text-xl font-bold text-gray-900 ${highlight ?? ''}`}>{value}</p>
+            <p className={`text-xl font-bold text-gray-900 ${highlight ?? ""}`}>
+              {value}
+            </p>
           )}
           <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
         </div>

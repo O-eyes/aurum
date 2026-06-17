@@ -61,7 +61,7 @@ docker compose -f docker-compose.infra.yml ps   # all should be healthy
 Exposed on localhost:
 
 | Service    | Host port | Credentials                          |
-|------------|-----------|--------------------------------------|
+| ---------- | --------- | ------------------------------------ |
 | Postgres   | `5432`    | `aurum` / `aurum_secret`, db `aurum` |
 | Redis      | `6379`    | password `aurum_redis_secret`        |
 | Kafka      | `29092`   | (EXTERNAL listener — see gotcha)     |
@@ -87,7 +87,7 @@ KAFKA_BROKERS=localhost:29092
 ## 3. Migrate & seed the database
 
 **There are no migrations yet** — the schema was edited directly, so the first
-`migrate dev` snapshots the *entire* current schema into a baseline migration
+`migrate dev` snapshots the _entire_ current schema into a baseline migration
 (this covers phone-auth, fee-itemization, and the burn-txhash-unique changes in
 one shot).
 
@@ -125,12 +125,12 @@ excluded). Swagger at `/docs` is not prefixed.
 
 Each in its own terminal (or `corepack pnpm dev` at the root to run all via turbo):
 
-| App                   | Command                                              | URL                    |
-|-----------------------|------------------------------------------------------|------------------------|
-| Landing               | `corepack pnpm --filter @aurum/landing dev`          | http://localhost:3000  |
-| Investor portal       | `corepack pnpm --filter @aurum/investor-portal dev`  | http://localhost:3001  |
-| Institutional portal  | `corepack pnpm --filter @aurum/institutional-portal dev` | http://localhost:3002 *(see its package.json -p flag)* |
-| Ops console           | `corepack pnpm --filter @aurum/ops-console dev`      | (see its package.json) |
+| App                  | Command                                                  | URL                                                    |
+| -------------------- | -------------------------------------------------------- | ------------------------------------------------------ |
+| Landing              | `corepack pnpm --filter @aurum/landing dev`              | http://localhost:3000                                  |
+| Investor portal      | `corepack pnpm --filter @aurum/investor-portal dev`      | http://localhost:3001                                  |
+| Institutional portal | `corepack pnpm --filter @aurum/institutional-portal dev` | http://localhost:3002 _(see its package.json -p flag)_ |
+| Ops console          | `corepack pnpm --filter @aurum/ops-console dev`          | (see its package.json)                                 |
 
 The investor portal's `dev` is pinned to **port 3001**. CORS in
 `docker-compose.yml` already allows 3000–3003.
@@ -150,15 +150,15 @@ curl http://localhost:4000/health
 
 This is a **demo MVP**, not a real-money pilot. As configured:
 
-| Area              | Current state                                  | Effect on the demo |
-|-------------------|------------------------------------------------|--------------------|
-| **SMS / OTP**     | stub — code is **logged to the API console**, not sent | Sign-in works; just read the code from the terminal |
-| **KYC**           | `KYC_PROVIDER=stub` (Sumsub creds empty); stub **throws in production** | No real ID verification; demo auto-passes/needs manual status |
-| **GoldBod**       | API URL/key empty, Paystack subaccount = `ACCT_goldbod_*` placeholder | The split-to-GoldBod leg is **skipped** — no real gold is purchased/settled |
-| **Payments**      | Paystack **test** keys (`sk_test_…`)           | Use Paystack test cards/MoMo; no real money moves |
-| **Chain**         | `CHAIN_ID=11155111` (Sepolia testnet)          | Mint/burn happen on testnet; tokens aren't real assets |
-| **Embedded wallet** | `NEXT_PUBLIC_PRIVY_APP_ID` empty             | Falls back to MetaMask/WalletConnect, not the seedless embedded wallet |
-| **Email**         | Mailhog (`localhost:8025`)                     | Verification/notification mail is caught locally, not delivered |
+| Area                | Current state                                                           | Effect on the demo                                                          |
+| ------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **SMS / OTP**       | stub — code is **logged to the API console**, not sent                  | Sign-in works; just read the code from the terminal                         |
+| **KYC**             | `KYC_PROVIDER=stub` (Sumsub creds empty); stub **throws in production** | No real ID verification; demo auto-passes/needs manual status               |
+| **GoldBod**         | API URL/key empty, Paystack subaccount = `ACCT_goldbod_*` placeholder   | The split-to-GoldBod leg is **skipped** — no real gold is purchased/settled |
+| **Payments**        | Paystack **test** keys (`sk_test_…`)                                    | Use Paystack test cards/MoMo; no real money moves                           |
+| **Chain**           | `CHAIN_ID=11155111` (Sepolia testnet)                                   | Mint/burn happen on testnet; tokens aren't real assets                      |
+| **Embedded wallet** | `NEXT_PUBLIC_PRIVY_APP_ID` empty                                        | Falls back to MetaMask/WalletConnect, not the seedless embedded wallet      |
+| **Email**           | Mailhog (`localhost:8025`)                                              | Verification/notification mail is caught locally, not delivered             |
 
 **To progress toward a real pilot**, these need live wiring (partnership/
 compliance work, not code): GoldBod settlement + real Paystack subaccount, live
@@ -179,7 +179,7 @@ docker compose -f docker-compose.infra.yml down -v
 
 ## Alternative: full stack in Docker (no source hot-reload)
 
-If you'd rather run *everything* (API + all portals) in containers:
+If you'd rather run _everything_ (API + all portals) in containers:
 
 ```powershell
 corepack pnpm dev:up            # = docker compose -f docker-compose.yml up -d

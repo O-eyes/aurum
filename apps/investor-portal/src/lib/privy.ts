@@ -6,9 +6,12 @@
  * flow so nothing breaks. Set the env var to switch on auto-created embedded
  * wallets for mainstream users.
  */
-export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? '';
+export const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? "";
 
 export const isPrivyEnabled = (): boolean => PRIVY_APP_ID.length > 0;
 
 // Chain the embedded wallet operates on (must match NEXT_PUBLIC_CHAIN_ID).
-export const PRIVY_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID ?? '11155111', 10);
+export const PRIVY_CHAIN_ID = parseInt(
+  process.env.NEXT_PUBLIC_CHAIN_ID ?? "11155111",
+  10,
+);

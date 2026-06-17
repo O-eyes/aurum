@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const KycWebhookSchema = z.object({
   applicantId: z.string(),

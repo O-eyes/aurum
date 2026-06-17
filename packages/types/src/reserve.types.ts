@@ -15,5 +15,5 @@ export interface ReserveStatus {
   backingRatio: string;
   goldPriceUsd: string;
   lastAuditDate: Date;
-  status: 'HEALTHY' | 'WARNING' | 'CRITICAL';
+  status: "HEALTHY" | "WARNING" | "CRITICAL";
 }

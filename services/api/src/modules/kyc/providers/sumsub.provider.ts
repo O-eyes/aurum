@@ -1,15 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { Injectable, Logger } from "@nestjs/common";
+import { createHmac, timingSafeEqual } from "crypto";
 import type {
   KycProvider,
   KycApplicantData,
   KycProviderResult,
   KycProviderStatus,
-} from '../kyc.provider.interface';
+} from "../kyc.provider.interface";
 
 @Injectable()
 export class SumsubProvider implements KycProvider {
-  readonly name = 'sumsub';
+  readonly name = "sumsub";
   private readonly logger = new Logger(SumsubProvider.name);
 
   constructor(
@@ -44,7 +44,9 @@ export class SumsubProvider implements KycProvider {
       {},
     );
 
-    this.logger.debug(`Sumsub applicant created: ${applicant.id} for user ${userId}`);
+    this.logger.debug(
+      `Sumsub applicant created: ${applicant.id} for user ${userId}`,
+    );
     return { applicantId: applicant.id, sdkToken: tokenResponse.token };
   }
 
@@ -58,14 +60,14 @@ export class SumsubProvider implements KycProvider {
     }>(`/resources/applicants/${applicantId}/requiredIdDocsStatus`);
 
     const status = this.mapReviewStatus(
-      applicant.review?.reviewStatus ?? 'init',
+      applicant.review?.reviewStatus ?? "init",
       applicant.review?.reviewResult?.reviewAnswer,
     );
 
     return {
       applicantId,
       status,
-      rejectionReason: applicant.review?.reviewResult?.rejectLabels?.join(', '),
+      rejectionReason: applicant.review?.reviewResult?.rejectLabels?.join(", "),
     };
   }
 
@@ -73,9 +75,11 @@ export class SumsubProvider implements KycProvider {
 
   verifyWebhookSignature(payload: string, signature: string): boolean {
     if (!signature) return false;
-    const hash = createHmac('sha256', this.secretKey).update(payload).digest('hex');
-    const expected = Buffer.from(hash, 'utf8');
-    const received = Buffer.from(signature, 'utf8');
+    const hash = createHmac("sha256", this.secretKey)
+      .update(payload)
+      .digest("hex");
+    const expected = Buffer.from(hash, "utf8");
+    const received = Buffer.from(signature, "utf8");
     if (expected.length !== received.length) return false;
     return timingSafeEqual(expected, received);
   }
@@ -90,7 +94,11 @@ export class SumsubProvider implements KycProvider {
       applicantId: string;
       type: string;
       reviewStatus?: string;
-      reviewResult?: { reviewAnswer: string; rejectLabels?: string[]; moderationComment?: string };
+      reviewResult?: {
+        reviewAnswer: string;
+        rejectLabels?: string[];
+        moderationComment?: string;
+      };
     };
 
     const status = this.mapReviewStatus(
@@ -100,7 +108,7 @@ export class SumsubProvider implements KycProvider {
 
     const rejectionReason =
       event.reviewResult?.moderationComment ??
-      event.reviewResult?.rejectLabels?.join(', ');
+      event.reviewResult?.rejectLabels?.join(", ");
 
     return { applicantId: event.applicantId, status, rejectionReason };
   }
@@ -108,27 +116,33 @@ export class SumsubProvider implements KycProvider {
   // ── HTTP helpers ───────────────────────────────────────────────────────────
 
   private async post<T>(path: string, body: unknown): Promise<T> {
-    return this.request<T>('POST', path, body);
+    return this.request<T>("POST", path, body);
   }
 
   private async get<T>(path: string): Promise<T> {
-    return this.request<T>('GET', path, undefined);
+    return this.request<T>("GET", path, undefined);
   }
 
-  private async request<T>(method: string, path: string, body: unknown): Promise<T> {
+  private async request<T>(
+    method: string,
+    path: string,
+    body: unknown,
+  ): Promise<T> {
     const ts = Math.floor(Date.now() / 1000).toString();
-    const bodyStr = body !== undefined ? JSON.stringify(body) : '';
+    const bodyStr = body !== undefined ? JSON.stringify(body) : "";
     const sigData = ts + method.toUpperCase() + path + bodyStr;
-    const signature = createHmac('sha256', this.secretKey).update(sigData).digest('hex');
+    const signature = createHmac("sha256", this.secretKey)
+      .update(sigData)
+      .digest("hex");
 
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers: {
-        'X-App-Token': this.appToken,
-        'X-App-Access-Sig': signature,
-        'X-App-Access-Ts': ts,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+        "X-App-Token": this.appToken,
+        "X-App-Access-Sig": signature,
+        "X-App-Access-Ts": ts,
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: bodyStr || undefined,
       signal: AbortSignal.timeout(15_000),
@@ -136,7 +150,9 @@ export class SumsubProvider implements KycProvider {
 
     if (!response.ok) {
       const text = await response.text();
-      this.logger.error(`Sumsub ${method} ${path} → ${response.status}: ${text}`);
+      this.logger.error(
+        `Sumsub ${method} ${path} → ${response.status}: ${text}`,
+      );
       throw new Error(`Sumsub error ${response.status}: ${text}`);
     }
 
@@ -149,20 +165,20 @@ export class SumsubProvider implements KycProvider {
     reviewStatus: string,
     reviewAnswer?: string,
   ): KycProviderStatus {
-    if (reviewAnswer === 'GREEN') return 'approved';
-    if (reviewAnswer === 'RED') return 'rejected';
+    if (reviewAnswer === "GREEN") return "approved";
+    if (reviewAnswer === "RED") return "rejected";
 
     const map: Record<string, KycProviderStatus> = {
-      completed: 'needs_review',
-      pending: 'under_review',
-      prechecked: 'under_review',
-      queued: 'under_review',
-      onHold: 'needs_review',
-      init: 'pending',
-      applicantReviewed: 'needs_review',
-      applicantPending: 'under_review',
+      completed: "needs_review",
+      pending: "under_review",
+      prechecked: "under_review",
+      queued: "under_review",
+      onHold: "needs_review",
+      init: "pending",
+      applicantReviewed: "needs_review",
+      applicantPending: "under_review",
     };
 
-    return map[reviewStatus] ?? 'under_review';
+    return map[reviewStatus] ?? "under_review";
   }
 }

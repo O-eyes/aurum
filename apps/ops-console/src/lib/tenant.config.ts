@@ -2,13 +2,13 @@
 // To white-label: update these values.
 
 export const TENANT = {
-  name: 'Aurum',
-  ticker: 'AUR',
+  name: "Aurum",
+  ticker: "AUR",
 
   custodian: {
-    name: 'Goldbod',
-    jurisdiction: 'Ghana',
+    name: "Goldbod",
+    jurisdiction: "Ghana",
   },
 
-  supportEmail: 'ops@aurum.gold',
+  supportEmail: "ops@aurum.gold",
 } as const;

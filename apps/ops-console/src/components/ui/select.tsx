@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect } from "react";
 
 export interface SelectOption {
   value: string;
@@ -20,8 +20,8 @@ export function Select({
   options,
   value,
   onChange,
-  placeholder = 'Select…',
-  className = '',
+  placeholder = "Select…",
+  className = "",
   disabled,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
@@ -33,7 +33,7 @@ export function Select({
     if (triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
       setDropdownStyle({
-        position: 'fixed',
+        position: "fixed",
         top: r.bottom + 4,
         left: r.left,
         width: r.width,
@@ -46,10 +46,11 @@ export function Select({
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
-      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) setOpen(false);
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node))
+        setOpen(false);
     };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
   }, [open]);
 
   const selected = options.find((o) => o.value === value);
@@ -63,7 +64,7 @@ export function Select({
         onClick={handleOpen}
         className="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
       >
-        <span className={selected ? 'text-gray-900' : 'text-gray-400'}>
+        <span className={selected ? "text-gray-900" : "text-gray-400"}>
           {selected?.label ?? placeholder}
         </span>
         <svg
@@ -92,7 +93,9 @@ export function Select({
                 setOpen(false);
               }}
               className={`px-3 py-2 cursor-pointer hover:bg-gray-50 ${
-                opt.value === value ? 'font-medium text-brand-600' : 'text-gray-700'
+                opt.value === value
+                  ? "font-medium text-brand-600"
+                  : "text-gray-700"
               }`}
             >
               {opt.label}

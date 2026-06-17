@@ -1,25 +1,38 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { PrismaClient } from '@aurum/db';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from "@nestjs/common";
+import { PrismaClient } from "@aurum/db";
 
 @Injectable()
-export class DatabaseService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class DatabaseService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(DatabaseService.name);
 
   constructor() {
     super({
-      log: process.env.NODE_ENV === 'development'
-        ? [{ emit: 'event', level: 'query' }, { emit: 'stdout', level: 'error' }, { emit: 'stdout', level: 'warn' }]
-        : [{ emit: 'stdout', level: 'error' }],
+      log:
+        process.env.NODE_ENV === "development"
+          ? [
+              { emit: "event", level: "query" },
+              { emit: "stdout", level: "error" },
+              { emit: "stdout", level: "warn" },
+            ]
+          : [{ emit: "stdout", level: "error" }],
     });
   }
 
   async onModuleInit() {
     await this.$connect();
-    this.logger.log('Database connected');
+    this.logger.log("Database connected");
   }
 
   async onModuleDestroy() {
     await this.$disconnect();
-    this.logger.log('Database disconnected');
+    this.logger.log("Database disconnected");
   }
 }

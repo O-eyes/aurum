@@ -5,19 +5,16 @@ import {
   BadRequestException,
   ForbiddenException,
   Logger,
-} from '@nestjs/common';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { KafkaService } from '../../infrastructure/kafka/kafka.service';
-import { AuditService } from '../audit/audit.service';
-import { KafkaTopic } from '../../infrastructure/kafka/kafka.topics';
-import {
-  KycProvider,
-  KYC_PROVIDER,
-} from './kyc.provider.interface';
-import { assertValidTransition } from './kyc-state-machine';
-import { KycStatus, AuditAction, Role } from '@aurum/types';
-import type { KycSubmitDto } from './dto/kyc-submit.dto';
-import type { KycApproveDto, KycRejectDto } from './dto/kyc-review.dto';
+} from "@nestjs/common";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { KafkaService } from "../../infrastructure/kafka/kafka.service";
+import { AuditService } from "../audit/audit.service";
+import { KafkaTopic } from "../../infrastructure/kafka/kafka.topics";
+import { KycProvider, KYC_PROVIDER } from "./kyc.provider.interface";
+import { assertValidTransition } from "./kyc-state-machine";
+import { KycStatus, AuditAction, Role } from "@aurum/types";
+import type { KycSubmitDto } from "./dto/kyc-submit.dto";
+import type { KycApproveDto, KycRejectDto } from "./dto/kyc-review.dto";
 
 @Injectable()
 export class KycService {
@@ -35,20 +32,16 @@ export class KycService {
   async getStatus(userId: string) {
     const profile = await this.db.kycProfile.findUnique({
       where: { userId },
-      include: { history: { orderBy: { createdAt: 'desc' }, take: 5 } },
+      include: { history: { orderBy: { createdAt: "desc" }, take: 5 } },
     });
 
-    if (!profile) throw new NotFoundException('KYC profile not found');
+    if (!profile) throw new NotFoundException("KYC profile not found");
     return profile;
   }
 
-  async submit(
-    userId: string,
-    dto: KycSubmitDto,
-    requestId: string,
-  ) {
+  async submit(userId: string, dto: KycSubmitDto, requestId: string) {
     const profile = await this.db.kycProfile.findUnique({ where: { userId } });
-    if (!profile) throw new NotFoundException('KYC profile not found');
+    if (!profile) throw new NotFoundException("KYC profile not found");
 
     const allowedToSubmit = [KycStatus.PENDING, KycStatus.REJECTED].includes(
       profile.status as KycStatus,
@@ -65,12 +58,15 @@ export class KycService {
       select: { email: true },
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
-    const { applicantId, sdkToken } = await this.provider.createApplicant(userId, {
-      ...dto,
-      email: user.email,
-    });
+    const { applicantId, sdkToken } = await this.provider.createApplicant(
+      userId,
+      {
+        ...dto,
+        email: user.email,
+      },
+    );
 
     const fromStatus = profile.status as KycStatus;
     const toStatus = KycStatus.UNDER_REVIEW;
@@ -97,7 +93,14 @@ export class KycService {
       });
     });
 
-    await this.emitKycEvent(profile.id, userId, fromStatus, toStatus, requestId, userId);
+    await this.emitKycEvent(
+      profile.id,
+      userId,
+      fromStatus,
+      toStatus,
+      requestId,
+      userId,
+    );
 
     return { status: toStatus, sdkToken };
   }
@@ -112,9 +115,17 @@ export class KycService {
         status: { in: [KycStatus.NEEDS_REVIEW, KycStatus.UNDER_REVIEW] },
       },
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, createdAt: true } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            createdAt: true,
+          },
+        },
       },
-      orderBy: { updatedAt: 'asc' },
+      orderBy: { updatedAt: "asc" },
     });
 
     return profiles.map((p) => ({
@@ -144,7 +155,7 @@ export class KycService {
       where: { id: kycProfileId },
     });
 
-    if (!profile) throw new NotFoundException('KYC profile not found');
+    if (!profile) throw new NotFoundException("KYC profile not found");
 
     assertValidTransition(profile.status as KycStatus, KycStatus.APPROVED);
 
@@ -167,7 +178,7 @@ export class KycService {
           fromStatus,
           toStatus: KycStatus.APPROVED,
           actorId: actor.id,
-          reason: dto.reason ?? 'Manually approved',
+          reason: dto.reason ?? "Manually approved",
         },
       });
     });
@@ -196,7 +207,7 @@ export class KycService {
       where: { id: kycProfileId },
     });
 
-    if (!profile) throw new NotFoundException('KYC profile not found');
+    if (!profile) throw new NotFoundException("KYC profile not found");
 
     assertValidTransition(profile.status as KycStatus, KycStatus.REJECTED);
 
@@ -239,13 +250,9 @@ export class KycService {
 
   // ── Provider Webhook ──────────────────────────────────────────────────────
 
-  async handleWebhook(
-    rawBody: string,
-    signature: string,
-    requestId: string,
-  ) {
+  async handleWebhook(rawBody: string, signature: string, requestId: string) {
     if (!this.provider.verifyWebhookSignature(rawBody, signature)) {
-      throw new ForbiddenException('Invalid webhook signature');
+      throw new ForbiddenException("Invalid webhook signature");
     }
 
     const event = this.provider.parseWebhookEvent(JSON.parse(rawBody));
@@ -263,7 +270,9 @@ export class KycService {
     const fromStatus = profile.status as KycStatus;
 
     if (!this.canTransitionSilently(fromStatus, toStatus)) {
-      this.logger.debug(`Ignoring webhook transition ${fromStatus} → ${toStatus}`);
+      this.logger.debug(
+        `Ignoring webhook transition ${fromStatus} → ${toStatus}`,
+      );
       return { received: true };
     }
 
@@ -283,7 +292,7 @@ export class KycService {
           kycProfileId: profile.id,
           fromStatus,
           toStatus,
-          actorId: 'system:kyc-provider',
+          actorId: "system:kyc-provider",
           reason: `Provider: ${this.provider.name}`,
         },
       });
@@ -295,7 +304,7 @@ export class KycService {
       fromStatus,
       toStatus,
       requestId,
-      'system:kyc-provider',
+      "system:kyc-provider",
       event.rejectionReason,
     );
 
@@ -323,7 +332,7 @@ export class KycService {
     await this.audit.emit({
       actorId,
       action,
-      resource: 'kyc_profile',
+      resource: "kyc_profile",
       resourceId: kycProfileId,
       before: { status: fromStatus },
       after: { status: toStatus, reason },
@@ -332,7 +341,7 @@ export class KycService {
 
     await this.kafka.publish(
       KafkaTopic.KYC_STATUS_CHANGED,
-      'KYC_STATUS_CHANGED',
+      "KYC_STATUS_CHANGED",
       { kycProfileId, userId, fromStatus, toStatus, reason },
       { requestId, actorId },
     );
@@ -340,7 +349,7 @@ export class KycService {
     if (toStatus === KycStatus.APPROVED) {
       await this.kafka.publish(
         KafkaTopic.KYC_APPROVED,
-        'KYC_APPROVED',
+        "KYC_APPROVED",
         { kycProfileId, userId },
         { requestId, actorId },
       );
@@ -370,7 +379,7 @@ export class KycService {
   private requireComplianceOrAbove(role: string) {
     const allowed = [Role.COMPLIANCE, Role.ADMIN, Role.TREASURY];
     if (!allowed.includes(role as Role)) {
-      throw new ForbiddenException('Compliance role required');
+      throw new ForbiddenException("Compliance role required");
     }
   }
 }

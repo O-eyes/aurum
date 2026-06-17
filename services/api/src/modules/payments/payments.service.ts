@@ -5,27 +5,35 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-} from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { ConfigService } from '@nestjs/config';
-import { v4 as uuid } from 'uuid';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { KafkaService } from '../../infrastructure/kafka/kafka.service';
-import { AuditService } from '../audit/audit.service';
-import { FxService } from '../../infrastructure/fx/fx.service';
-import { OrdersService } from '../orders/orders.service';
-import { KafkaTopic } from '../../infrastructure/kafka/kafka.topics';
+} from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { ConfigService } from "@nestjs/config";
+import { v4 as uuid } from "uuid";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { KafkaService } from "../../infrastructure/kafka/kafka.service";
+import { AuditService } from "../audit/audit.service";
+import { FxService } from "../../infrastructure/fx/fx.service";
+import { OrdersService } from "../orders/orders.service";
+import { KafkaTopic } from "../../infrastructure/kafka/kafka.topics";
 import {
   PAYMENT_PROVIDER,
   type PaymentProvider,
   type PaymentSplit,
-} from './payment.provider.interface';
-import { AuditAction, OrderStatus, OrderType, PaymentStatus } from '@aurum/types';
-import type { InitiateCardPaymentDto, InitiateMobileMoneyDto } from './dto/initiate-payment.dto';
+} from "./payment.provider.interface";
+import {
+  AuditAction,
+  OrderStatus,
+  OrderType,
+  PaymentStatus,
+} from "@aurum/types";
+import type {
+  InitiateCardPaymentDto,
+  InitiateMobileMoneyDto,
+} from "./dto/initiate-payment.dto";
 
 // Placeholder subaccount code — when this is the configured value, the split is
 // skipped so local/dev charges don't fail against a non-existent subaccount.
-const PLACEHOLDER_SUBACCOUNT = 'ACCT_goldbod_placeholder';
+const PLACEHOLDER_SUBACCOUNT = "ACCT_goldbod_placeholder";
 
 // Smallest currency unit multipliers (e.g. GHS → pesewas × 100)
 const CURRENCY_MULTIPLIERS: Record<string, number> = {
@@ -57,15 +65,22 @@ export class PaymentsService {
    * configured subaccount, or the placeholder) so the charge proceeds un-split.
    */
   private async buildSplit(
-    order: { type: string; platformFeeUsd: Prisma.Decimal | null; taxUsd: Prisma.Decimal | null },
+    order: {
+      type: string;
+      platformFeeUsd: Prisma.Decimal | null;
+      taxUsd: Prisma.Decimal | null;
+    },
     currency: string,
     multiplier: number,
   ): Promise<PaymentSplit | undefined> {
     if (order.type !== OrderType.BUY) return undefined;
 
-    const subaccountCode = this.config.get<string>('goldbod.paystackSubaccount') ?? '';
+    const subaccountCode =
+      this.config.get<string>("goldbod.paystackSubaccount") ?? "";
     if (!subaccountCode || subaccountCode === PLACEHOLDER_SUBACCOUNT) {
-      this.logger.debug('GoldBod subaccount not configured — skipping payment split');
+      this.logger.debug(
+        "GoldBod subaccount not configured — skipping payment split",
+      );
       return undefined;
     }
 
@@ -81,7 +96,7 @@ export class PaymentsService {
     return {
       subaccountCode,
       transactionChargeSmallestUnit,
-      bearer: 'account', // Aurum absorbs Paystack fees so GoldBod gets exact gold cost
+      bearer: "account", // Aurum absorbs Paystack fees so GoldBod gets exact gold cost
     };
   }
 
@@ -94,10 +109,13 @@ export class PaymentsService {
     requestId: string,
   ) {
     const order = await this.requireOrderForPayment(orderId, userId);
-    const user = await this.db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
+    const user = await this.db.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { email: true },
+    });
 
-    const reference = `AUR-${uuid().replace(/-/g, '').substring(0, 16).toUpperCase()}`;
-    const currency = dto.currency ?? 'USD';
+    const reference = `AUR-${uuid().replace(/-/g, "").substring(0, 16).toUpperCase()}`;
+    const currency = dto.currency ?? "USD";
     const multiplier = CURRENCY_MULTIPLIERS[currency] ?? 100;
     // Convert the USD order value into the charge currency server-side.
     const amountCents = await this.fx.usdToSmallestUnit(
@@ -113,7 +131,7 @@ export class PaymentsService {
       amountCents,
       currency,
       reference,
-      callbackUrl: dto.callbackUrl ?? '',
+      callbackUrl: dto.callbackUrl ?? "",
       metadata: { orderId, userId },
       split,
     });
@@ -131,23 +149,31 @@ export class PaymentsService {
         amount: chargedAmount,
         currency,
         authorizationUrl: result.authorizationUrl,
-        metadata: { accessCode: result.accessCode, channel: 'card', amountSmallestUnit: amountCents },
+        metadata: {
+          accessCode: result.accessCode,
+          channel: "card",
+          amountSmallestUnit: amountCents,
+        },
       },
       update: {
         providerRef: result.reference,
         amount: chargedAmount,
         currency,
         authorizationUrl: result.authorizationUrl,
-        metadata: { accessCode: result.accessCode, channel: 'card', amountSmallestUnit: amountCents },
+        metadata: {
+          accessCode: result.accessCode,
+          channel: "card",
+          amountSmallestUnit: amountCents,
+        },
       },
     });
 
     await this.audit.emit({
       actorId: userId,
       action: AuditAction.PAYMENT_INITIATED,
-      resource: 'payment',
+      resource: "payment",
       resourceId: orderId,
-      after: { reference: result.reference, channel: 'card', currency },
+      after: { reference: result.reference, channel: "card", currency },
       requestId,
     });
 
@@ -167,9 +193,12 @@ export class PaymentsService {
     requestId: string,
   ) {
     const order = await this.requireOrderForPayment(orderId, userId);
-    const user = await this.db.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
+    const user = await this.db.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { email: true },
+    });
 
-    const reference = `AUR-MM-${uuid().replace(/-/g, '').substring(0, 12).toUpperCase()}`;
+    const reference = `AUR-MM-${uuid().replace(/-/g, "").substring(0, 12).toUpperCase()}`;
     const multiplier = CURRENCY_MULTIPLIERS[dto.currency] ?? 100;
     // The charge amount is always computed server-side from the USD order value.
     // dto.localAmount is only the client-displayed quote — reject if it drifted
@@ -185,7 +214,7 @@ export class PaymentsService {
       const drift = Math.abs(quoted - amountSmallestUnit) / amountSmallestUnit;
       if (drift > 0.02) {
         throw new BadRequestException(
-          'Exchange rate has changed since this quote was displayed. Please refresh and try again.',
+          "Exchange rate has changed since this quote was displayed. Please refresh and try again.",
         );
       }
     }
@@ -203,7 +232,9 @@ export class PaymentsService {
       split,
     });
 
-    const chargedAmount = new Prisma.Decimal(amountSmallestUnit).div(multiplier);
+    const chargedAmount = new Prisma.Decimal(amountSmallestUnit).div(
+      multiplier,
+    );
 
     await this.db.payment.upsert({
       where: { orderId },
@@ -215,7 +246,7 @@ export class PaymentsService {
         amount: chargedAmount,
         currency: dto.currency,
         metadata: {
-          channel: 'mobile_money',
+          channel: "mobile_money",
           network: dto.network,
           phone: dto.phone,
           paystackStatus: result.status,
@@ -227,7 +258,7 @@ export class PaymentsService {
         amount: chargedAmount,
         currency: dto.currency,
         metadata: {
-          channel: 'mobile_money',
+          channel: "mobile_money",
           network: dto.network,
           phone: dto.phone,
           paystackStatus: result.status,
@@ -239,9 +270,14 @@ export class PaymentsService {
     await this.audit.emit({
       actorId: userId,
       action: AuditAction.PAYMENT_INITIATED,
-      resource: 'payment',
+      resource: "payment",
       resourceId: orderId,
-      after: { reference: result.reference, channel: 'mobile_money', network: dto.network, currency: dto.currency },
+      after: {
+        reference: result.reference,
+        channel: "mobile_money",
+        network: dto.network,
+        currency: dto.currency,
+      },
       requestId,
     });
 
@@ -259,20 +295,24 @@ export class PaymentsService {
 
   async handleWebhook(rawBody: string, signature: string, requestId: string) {
     if (!this.provider.verifyWebhookSignature(rawBody, signature)) {
-      throw new ForbiddenException('Invalid webhook signature');
+      throw new ForbiddenException("Invalid webhook signature");
     }
 
     const payload = JSON.parse(rawBody) as Record<string, unknown>;
-    const event = (payload.event as string) ?? '';
+    const event = (payload.event as string) ?? "";
 
     // Only process payment events
-    if (!['charge.success', 'charge.failed', 'charge.dispute.create'].includes(event)) {
+    if (
+      !["charge.success", "charge.failed", "charge.dispute.create"].includes(
+        event,
+      )
+    ) {
       return { received: true };
     }
 
     const webhookEvent = this.provider.parseWebhookEvent(payload);
     if (!webhookEvent.reference) {
-      this.logger.warn('Webhook received with no reference');
+      this.logger.warn("Webhook received with no reference");
       return { received: true };
     }
 
@@ -282,7 +322,9 @@ export class PaymentsService {
     });
 
     if (!payment) {
-      this.logger.warn(`Webhook for unknown reference: ${webhookEvent.reference}`);
+      this.logger.warn(
+        `Webhook for unknown reference: ${webhookEvent.reference}`,
+      );
       return { received: true };
     }
 
@@ -291,11 +333,12 @@ export class PaymentsService {
       return { received: true };
     }
 
-    if (webhookEvent.status === 'success') {
+    if (webhookEvent.status === "success") {
       // Verify the amount actually charged matches what we initialized.
       // A success webhook for the wrong amount/currency must never confirm the order.
       const expectedSmallestUnit =
-        (payment.metadata as { amountSmallestUnit?: number } | null)?.amountSmallestUnit ??
+        (payment.metadata as { amountSmallestUnit?: number } | null)
+          ?.amountSmallestUnit ??
         Math.round(
           (payment.amount as Prisma.Decimal).toNumber() *
             (CURRENCY_MULTIPLIERS[payment.currency] ?? 100),
@@ -312,12 +355,12 @@ export class PaymentsService {
             `got ${webhookEvent.amount} ${webhookEvent.currency}`,
         );
         await this.audit.emit({
-          actorId: 'system:paystack',
+          actorId: "system:paystack",
           action: AuditAction.PAYMENT_FAILED,
-          resource: 'payment',
+          resource: "payment",
           resourceId: payment.orderId,
           after: {
-            reason: 'amount_mismatch',
+            reason: "amount_mismatch",
             expected: `${expectedSmallestUnit} ${payment.currency}`,
             received: `${webhookEvent.amount} ${webhookEvent.currency}`,
           },
@@ -338,7 +381,9 @@ export class PaymentsService {
   // ── Internal ───────────────────────────────────────────────────────────────
 
   private async confirmPayment(
-    payment: Awaited<ReturnType<typeof this.db.payment.findFirst>> & { order: any },
+    payment: Awaited<ReturnType<typeof this.db.payment.findFirst>> & {
+      order: any;
+    },
     webhookEvent: { reference: string; amount: number; currency: string },
     requestId: string,
   ) {
@@ -350,20 +395,27 @@ export class PaymentsService {
     if (count === 0) return; // another delivery won the race
 
     await this.audit.emit({
-      actorId: 'system:paystack',
+      actorId: "system:paystack",
       action: AuditAction.PAYMENT_CONFIRMED,
-      resource: 'payment',
+      resource: "payment",
       resourceId: payment!.orderId,
       before: { status: PaymentStatus.PENDING },
-      after: { status: PaymentStatus.CONFIRMED, reference: webhookEvent.reference },
+      after: {
+        status: PaymentStatus.CONFIRMED,
+        reference: webhookEvent.reference,
+      },
       requestId,
     });
 
     await this.kafka.publish(
       KafkaTopic.PAYMENT_CONFIRMED,
-      'PAYMENT_CONFIRMED',
-      { orderId: payment!.orderId, userId: payment!.order.userId, reference: webhookEvent.reference },
-      { requestId, actorId: 'system:paystack' },
+      "PAYMENT_CONFIRMED",
+      {
+        orderId: payment!.orderId,
+        userId: payment!.order.userId,
+        reference: webhookEvent.reference,
+      },
+      { requestId, actorId: "system:paystack" },
     );
 
     // Advance the order state
@@ -371,7 +423,9 @@ export class PaymentsService {
   }
 
   private async failPayment(
-    payment: Awaited<ReturnType<typeof this.db.payment.findFirst>> & { order: any },
+    payment: Awaited<ReturnType<typeof this.db.payment.findFirst>> & {
+      order: any;
+    },
     webhookEvent: { reference: string },
     requestId: string,
   ) {
@@ -382,31 +436,43 @@ export class PaymentsService {
     if (count === 0) return; // already processed by a concurrent delivery
 
     await this.audit.emit({
-      actorId: 'system:paystack',
+      actorId: "system:paystack",
       action: AuditAction.PAYMENT_FAILED,
-      resource: 'payment',
+      resource: "payment",
       resourceId: payment!.orderId,
       before: { status: PaymentStatus.PENDING },
-      after: { status: PaymentStatus.FAILED, reference: webhookEvent.reference },
+      after: {
+        status: PaymentStatus.FAILED,
+        reference: webhookEvent.reference,
+      },
       requestId,
     });
 
     await this.kafka.publish(
       KafkaTopic.PAYMENT_FAILED,
-      'PAYMENT_FAILED',
-      { orderId: payment!.orderId, userId: payment!.order.userId, reference: webhookEvent.reference },
-      { requestId, actorId: 'system:paystack' },
+      "PAYMENT_FAILED",
+      {
+        orderId: payment!.orderId,
+        userId: payment!.order.userId,
+        reference: webhookEvent.reference,
+      },
+      { requestId, actorId: "system:paystack" },
     );
 
     await this.ordersService.onPaymentFailed(payment!.orderId, requestId);
   }
 
   private async requireOrderForPayment(orderId: string, userId: string) {
-    const order = await this.db.order.findFirst({ where: { id: orderId, userId } });
+    const order = await this.db.order.findFirst({
+      where: { id: orderId, userId },
+    });
 
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
 
-    const payableStatuses = [OrderStatus.PAYMENT_PENDING, OrderStatus.COMPLIANCE_HOLD];
+    const payableStatuses = [
+      OrderStatus.PAYMENT_PENDING,
+      OrderStatus.COMPLIANCE_HOLD,
+    ];
     if (!payableStatuses.includes(order.status as OrderStatus)) {
       throw new BadRequestException(
         `Order is not in a payable state (current: ${order.status})`,

@@ -1,9 +1,9 @@
 export enum Role {
-  USER = 'USER',
-  ADMIN = 'ADMIN',
-  COMPLIANCE = 'COMPLIANCE',
-  TREASURY = 'TREASURY',
-  SYSTEM = 'SYSTEM',
+  USER = "USER",
+  ADMIN = "ADMIN",
+  COMPLIANCE = "COMPLIANCE",
+  TREASURY = "TREASURY",
+  SYSTEM = "SYSTEM",
 }
 
 export interface User {

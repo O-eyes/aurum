@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext } from "react";
 
 export interface EmbeddedWalletState {
   /** Embedded wallets are configured (Privy app ID present). */

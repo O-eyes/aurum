@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ─── Full stack: infrastructure + all application services ───────────────────
 # Local dev:   pnpm dev:up
 # Server:      docker compose up -d   (set env vars via .env or environment block)

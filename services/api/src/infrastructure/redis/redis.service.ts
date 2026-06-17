@@ -1,6 +1,11 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import Redis from "ioredis";
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -8,22 +13,24 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis;
 
   constructor(private readonly config: ConfigService) {
-    this.client = new Redis(config.get<string>('redis.url')!, {
+    this.client = new Redis(config.get<string>("redis.url")!, {
       lazyConnect: true,
       maxRetriesPerRequest: 3,
     });
 
-    this.client.on('error', (err) => {
-      this.logger.error('Redis error', err.message);
+    this.client.on("error", (err) => {
+      this.logger.error("Redis error", err.message);
     });
   }
 
   async onModuleInit() {
     try {
       await this.client.connect();
-      this.logger.log('Redis connected');
+      this.logger.log("Redis connected");
     } catch (err) {
-      this.logger.warn(`Redis unavailable — token refresh/rate-limit features degraded: ${(err as Error).message}`);
+      this.logger.warn(
+        `Redis unavailable — token refresh/rate-limit features degraded: ${(err as Error).message}`,
+      );
     }
   }
 

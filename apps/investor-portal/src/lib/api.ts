@@ -1,33 +1,33 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-const API_PREFIX = '/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_PREFIX = "/api/v1";
 
 function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('aurum_access_token');
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("aurum_access_token");
 }
 
 function setTokens(access: string, refresh: string) {
-  localStorage.setItem('aurum_access_token', access);
-  localStorage.setItem('aurum_refresh_token', refresh);
-  localStorage.removeItem('aurum_session_expired');
+  localStorage.setItem("aurum_access_token", access);
+  localStorage.setItem("aurum_refresh_token", refresh);
+  localStorage.removeItem("aurum_session_expired");
 }
 
 function clearTokens() {
-  localStorage.removeItem('aurum_access_token');
-  localStorage.removeItem('aurum_refresh_token');
+  localStorage.removeItem("aurum_access_token");
+  localStorage.removeItem("aurum_refresh_token");
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refresh = localStorage.getItem('aurum_refresh_token');
+  const refresh = localStorage.getItem("aurum_refresh_token");
   if (!refresh) return null;
   try {
     const res = await fetch(`${BASE_URL}${API_PREFIX}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: refresh }),
     });
     if (!res.ok) {
-      localStorage.setItem('aurum_session_expired', '1');
+      localStorage.setItem("aurum_session_expired", "1");
       clearTokens();
       return null;
     }
@@ -47,7 +47,7 @@ export class ApiError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -57,28 +57,38 @@ export async function request<T>(
 ): Promise<T> {
   const { skipAuth, ...init } = options;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(init.headers as Record<string, string>),
   };
 
   if (!skipAuth) {
     const token = getAccessToken();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  let res = await fetch(`${BASE_URL}${API_PREFIX}${path}`, { ...init, headers });
+  let res = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
+    ...init,
+    headers,
+  });
 
   if (res.status === 401 && !skipAuth) {
     const newToken = await refreshAccessToken();
     if (newToken) {
-      headers['Authorization'] = `Bearer ${newToken}`;
-      res = await fetch(`${BASE_URL}${API_PREFIX}${path}`, { ...init, headers });
+      headers["Authorization"] = `Bearer ${newToken}`;
+      res = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
+        ...init,
+        headers,
+      });
     }
   }
 
   if (!res.ok) {
     let body: unknown;
-    try { body = await res.json(); } catch { body = null; }
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
     const message = (body as any)?.message ?? `HTTP ${res.status}`;
     throw new ApiError(res.status, body, message);
   }
@@ -111,12 +121,24 @@ export interface OtpLoginResponse extends LoginResponse {
 }
 
 export const auth = {
-  register: (body: { email: string; password: string; firstName?: string; lastName?: string }) =>
-    request<{ message: string }>('/auth/register', { method: 'POST', body: JSON.stringify(body), skipAuth: true }),
+  register: (body: {
+    email: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+  }) =>
+    request<{ message: string }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(body),
+      skipAuth: true,
+    }),
 
-  login: async (body: { email: string; password: string }): Promise<LoginResponse> => {
-    const data = await request<LoginResponse>('/auth/login', {
-      method: 'POST',
+  login: async (body: {
+    email: string;
+    password: string;
+  }): Promise<LoginResponse> => {
+    const data = await request<LoginResponse>("/auth/login", {
+      method: "POST",
       body: JSON.stringify(body),
       skipAuth: true,
     });
@@ -125,20 +147,25 @@ export const auth = {
   },
 
   logout: async () => {
-    try { await request('/auth/logout', { method: 'POST' }); } catch {}
+    try {
+      await request("/auth/logout", { method: "POST" });
+    } catch {}
     clearTokens();
   },
 
   requestOtp: (phone: string) =>
-    request<{ message: string; expiresInSeconds: number }>('/auth/otp/request', {
-      method: 'POST',
-      body: JSON.stringify({ phone }),
-      skipAuth: true,
-    }),
+    request<{ message: string; expiresInSeconds: number }>(
+      "/auth/otp/request",
+      {
+        method: "POST",
+        body: JSON.stringify({ phone }),
+        skipAuth: true,
+      },
+    ),
 
   verifyOtp: async (phone: string, code: string): Promise<OtpLoginResponse> => {
-    const data = await request<OtpLoginResponse>('/auth/otp/verify', {
-      method: 'POST',
+    const data = await request<OtpLoginResponse>("/auth/otp/verify", {
+      method: "POST",
       body: JSON.stringify({ phone, code }),
       skipAuth: true,
     });
@@ -147,21 +174,21 @@ export const auth = {
   },
 
   walletChallenge: (address: string, chainId = 1) =>
-    request<{ nonce: string; message: string }>('/auth/wallet/challenge', {
-      method: 'POST',
+    request<{ nonce: string; message: string }>("/auth/wallet/challenge", {
+      method: "POST",
       body: JSON.stringify({ address, chainId }),
     }),
 
   walletVerify: (body: { signature: string; message: string }) =>
-    request<LoginResponse>('/auth/wallet/verify', {
-      method: 'POST',
+    request<LoginResponse>("/auth/wallet/verify", {
+      method: "POST",
       body: JSON.stringify(body),
       skipAuth: true,
     }),
 
   walletLink: (body: { signature: string; message: string }) =>
-    request<{ linked: boolean; address: string }>('/auth/wallet/verify', {
-      method: 'POST',
+    request<{ linked: boolean; address: string }>("/auth/wallet/verify", {
+      method: "POST",
       body: JSON.stringify(body),
     }),
 
@@ -179,16 +206,20 @@ export interface BalanceResponse {
 }
 
 export const users = {
-  me: () => request<UserProfile>('/users/me'),
-  balance: () => request<BalanceResponse>('/users/me/balance'),
-  wallets: () => request<{ id: string; address: string; isPrimary: boolean; createdAt: string }[]>('/users/me/wallets'),
-  removeWallet: (walletId: string) => request<void>(`/users/me/wallets/${walletId}`, { method: 'DELETE' }),
+  me: () => request<UserProfile>("/users/me"),
+  balance: () => request<BalanceResponse>("/users/me/balance"),
+  wallets: () =>
+    request<
+      { id: string; address: string; isPrimary: boolean; createdAt: string }[]
+    >("/users/me/wallets"),
+  removeWallet: (walletId: string) =>
+    request<void>(`/users/me/wallets/${walletId}`, { method: "DELETE" }),
 };
 
 // ── KYC ──────────────────────────────────────────────────────────────────────
 
 export interface KycStatus {
-  status: 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'NEEDS_REVIEW';
+  status: "PENDING" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "NEEDS_REVIEW";
   reviewNote: string | null;
   sdkToken: string | null;
   externalId: string | null;
@@ -196,10 +227,10 @@ export interface KycStatus {
 }
 
 export const kyc = {
-  status: () => request<KycStatus>('/kyc/status'),
+  status: () => request<KycStatus>("/kyc/status"),
   submit: (body: { idDocumentType?: string }) =>
-    request<{ sdkToken: string; externalId: string }>('/kyc/submit', {
-      method: 'POST',
+    request<{ sdkToken: string; externalId: string }>("/kyc/submit", {
+      method: "POST",
       body: JSON.stringify(body),
     }),
 };
@@ -210,7 +241,7 @@ export interface RedemptionMetadata {
   denomination: { weightG: number; label: string };
   quantity: number;
   totalWeightG: number;
-  collectionMethod: 'pickup' | 'delivery';
+  collectionMethod: "pickup" | "delivery";
   preferredPickupDate?: string;
   idType?: string;
   idNumber?: string;
@@ -228,7 +259,7 @@ export interface RedemptionMetadata {
 
 export interface Order {
   id: string;
-  type: 'BUY' | 'SELL' | 'REDEEM';
+  type: "BUY" | "SELL" | "REDEEM";
   status: string;
   amountUsd: string;
   goldOunces: string;
@@ -243,7 +274,7 @@ export interface Order {
 }
 
 export interface CreateOrderBody {
-  type: 'BUY' | 'SELL';
+  type: "BUY" | "SELL";
   amountUsd: string;
   walletAddress: string;
   idempotencyKey: string;
@@ -253,7 +284,7 @@ export interface CreateRedemptionBody {
   denomination: { weightG: number; label: string };
   quantity: number;
   walletAddress: string;
-  collectionMethod: 'pickup' | 'delivery';
+  collectionMethod: "pickup" | "delivery";
   preferredPickupDate?: string;
   idType: string;
   idNumber: string;
@@ -269,38 +300,48 @@ export interface CreateRedemptionBody {
 }
 
 export const orders = {
-  list: () => request<Order[]>('/orders/me'),
+  list: () => request<Order[]>("/orders/me"),
   get: (id: string) => request<Order>(`/orders/me/${id}`),
   create: (body: CreateOrderBody) =>
-    request<Order>('/orders', { method: 'POST', body: JSON.stringify(body) }),
+    request<Order>("/orders", { method: "POST", body: JSON.stringify(body) }),
   createRedemption: (body: CreateRedemptionBody) =>
-    request<Order>('/orders/redeem', { method: 'POST', body: JSON.stringify(body) }),
+    request<Order>("/orders/redeem", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   cancel: (id: string) =>
-    request<void>(`/orders/me/${id}`, { method: 'DELETE' }),
+    request<void>(`/orders/me/${id}`, { method: "DELETE" }),
 };
 
 // ── Payments ─────────────────────────────────────────────────────────────────
 
 export const payments = {
-  initiateCard: (orderId: string, body: { email: string; callbackUrl?: string }) =>
-    request<{ authorizationUrl: string; accessCode: string; reference: string }>(
-      `/orders/${orderId}/pay/card`,
-      { method: 'POST', body: JSON.stringify(body) },
-    ),
+  initiateCard: (
+    orderId: string,
+    body: { email: string; callbackUrl?: string },
+  ) =>
+    request<{
+      authorizationUrl: string;
+      accessCode: string;
+      reference: string;
+    }>(`/orders/${orderId}/pay/card`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   initiateMobileMoney: (
     orderId: string,
-    body: { phone: string; provider: 'mtn' | 'telecel' | 'at' },
+    body: { phone: string; provider: "mtn" | "telecel" | "at" },
   ) =>
     request<{ reference: string; status: string; displayText: string }>(
       `/orders/${orderId}/pay/mobile-money`,
-      { method: 'POST', body: JSON.stringify(body) },
+      { method: "POST", body: JSON.stringify(body) },
     ),
 
   setPayoutMethod: (
     orderId: string,
     body: {
-      method: 'bank' | 'mobile_money';
+      method: "bank" | "mobile_money";
       currency: string;
       accountNumber?: string;
       bankCode?: string;
@@ -310,26 +351,32 @@ export const payments = {
     },
   ) =>
     request<{ message: string }>(`/orders/${orderId}/payout/method`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(body),
     }),
 
   initiatePayout: (orderId: string) =>
-    request<{ transferCode: string; status: string }>(`/orders/${orderId}/payout/initiate`, {
-      method: 'POST',
-    }),
+    request<{ transferCode: string; status: string }>(
+      `/orders/${orderId}/payout/initiate`,
+      {
+        method: "POST",
+      },
+    ),
 };
 
 // ── Mint / Burn ───────────────────────────────────────────────────────────────
 
 export const mint = {
   createBurnRequest: (orderId: string) =>
-    request<{ to: string; data: string; value: string }>(`/mint/burn/request/${orderId}`, {
-      method: 'POST',
-    }),
+    request<{ to: string; data: string; value: string }>(
+      `/mint/burn/request/${orderId}`,
+      {
+        method: "POST",
+      },
+    ),
   confirmBurn: (body: { orderId: string; txHash: string }) =>
-    request<{ message: string }>('/mint/burn/confirm', {
-      method: 'POST',
+    request<{ message: string }>("/mint/burn/confirm", {
+      method: "POST",
       body: JSON.stringify(body),
     }),
 };
@@ -346,5 +393,6 @@ export interface ReserveSnapshot {
 }
 
 export const reserve = {
-  latest: () => request<ReserveSnapshot>('/reserve/snapshot/public', { skipAuth: true }),
+  latest: () =>
+    request<ReserveSnapshot>("/reserve/snapshot/public", { skipAuth: true }),
 };

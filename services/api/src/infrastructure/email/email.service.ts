@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as nodemailer from "nodemailer";
 
 @Injectable()
 export class EmailService {
@@ -11,13 +11,13 @@ export class EmailService {
   private readonly isProduction: boolean;
 
   constructor(config: ConfigService) {
-    const host = config.get<string>('email.host') ?? 'localhost';
-    const port = config.get<number>('email.port') ?? 1025;
-    const user = config.get<string>('email.user');
-    const pass = config.get<string>('email.pass');
-    this.from = config.get<string>('email.from') ?? 'noreply@aurum.finance';
-    this.appUrl = config.get<string>('appUrl') ?? 'http://localhost:3001';
-    this.isProduction = config.get<string>('nodeEnv') === 'production';
+    const host = config.get<string>("email.host") ?? "localhost";
+    const port = config.get<number>("email.port") ?? 1025;
+    const user = config.get<string>("email.user");
+    const pass = config.get<string>("email.pass");
+    this.from = config.get<string>("email.from") ?? "noreply@aurum.finance";
+    this.appUrl = config.get<string>("appUrl") ?? "http://localhost:3001";
+    this.isProduction = config.get<string>("nodeEnv") === "production";
 
     this.transporter = nodemailer.createTransport({
       host,
@@ -39,7 +39,7 @@ export class EmailService {
       await this.transporter.sendMail({
         from: this.from,
         to: email,
-        subject: 'Verify your Aurum account',
+        subject: "Verify your Aurum account",
         text: `Click the link below to verify your email address:\n\n${verifyUrl}\n\nThis link expires in 24 hours.`,
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:auto">
@@ -56,7 +56,10 @@ export class EmailService {
         `,
       });
     } catch (err) {
-      this.logger.error(`Failed to send verification email to ${email}`, (err as Error).message);
+      this.logger.error(
+        `Failed to send verification email to ${email}`,
+        (err as Error).message,
+      );
     }
   }
 
@@ -72,7 +75,7 @@ export class EmailService {
       await this.transporter.sendMail({
         from: this.from,
         to: email,
-        subject: 'Reset your Aurum password',
+        subject: "Reset your Aurum password",
         text: `Click the link below to reset your password:\n\n${resetUrl}\n\nThis link expires in 1 hour.`,
         html: `
           <div style="font-family:sans-serif;max-width:480px;margin:auto">
@@ -89,7 +92,10 @@ export class EmailService {
         `,
       });
     } catch (err) {
-      this.logger.error(`Failed to send password reset email to ${email}`, (err as Error).message);
+      this.logger.error(
+        `Failed to send password reset email to ${email}`,
+        (err as Error).message,
+      );
     }
   }
 }

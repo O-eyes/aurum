@@ -1,8 +1,13 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Kafka, Producer, Consumer, logLevel } from 'kafkajs';
-import { v4 as uuid } from 'uuid';
-import { KafkaMessage } from '@aurum/types';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Kafka, Producer, Consumer, logLevel } from "kafkajs";
+import { v4 as uuid } from "uuid";
+import { KafkaMessage } from "@aurum/types";
 
 @Injectable()
 export class KafkaService implements OnModuleInit, OnModuleDestroy {
@@ -13,8 +18,8 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly config: ConfigService) {
     this.kafka = new Kafka({
-      clientId: config.get<string>('kafka.clientId'),
-      brokers: config.get<string[]>('kafka.brokers'),
+      clientId: config.get<string>("kafka.clientId"),
+      brokers: config.get<string[]>("kafka.brokers"),
       logLevel: logLevel.WARN,
     });
     this.producer = this.kafka.producer({
@@ -26,9 +31,11 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.producer.connect();
       this.connected = true;
-      this.logger.log('Kafka producer connected');
+      this.logger.log("Kafka producer connected");
     } catch (err) {
-      this.logger.warn(`Kafka unavailable — events will be dropped: ${(err as Error).message}`);
+      this.logger.warn(
+        `Kafka unavailable — events will be dropped: ${(err as Error).message}`,
+      );
     }
   }
 
@@ -50,12 +57,12 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
       eventId: uuid(),
       eventType,
       occurredAt: new Date().toISOString(),
-      version: '1.0',
+      version: "1.0",
       payload,
       metadata: {
         requestId: meta.requestId,
         actorId: meta.actorId,
-        source: 'aurum-api',
+        source: "aurum-api",
       },
     };
 
@@ -67,14 +74,16 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
             key: meta.actorId,
             value: JSON.stringify(message),
             headers: {
-              'event-type': eventType,
-              'request-id': meta.requestId,
+              "event-type": eventType,
+              "request-id": meta.requestId,
             },
           },
         ],
       });
     } catch (err) {
-      this.logger.error(`Failed to publish ${eventType}: ${(err as Error).message}`);
+      this.logger.error(
+        `Failed to publish ${eventType}: ${(err as Error).message}`,
+      );
     }
   }
 

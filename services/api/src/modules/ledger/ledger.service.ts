@@ -1,7 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { LedgerType } from '@aurum/types';
+import { Injectable, BadRequestException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { LedgerType } from "@aurum/types";
 
 @Injectable()
 export class LedgerService {
@@ -15,7 +15,9 @@ export class LedgerService {
     tx?: Prisma.TransactionClient,
   ) {
     if (tx) return this.writeEntry(tx, userId, amount, type, reference);
-    return this.db.$transaction((t) => this.writeEntry(t, userId, amount, type, reference));
+    return this.db.$transaction((t) =>
+      this.writeEntry(t, userId, amount, type, reference),
+    );
   }
 
   async debit(
@@ -26,7 +28,9 @@ export class LedgerService {
     tx?: Prisma.TransactionClient,
   ) {
     if (tx) return this.writeEntry(tx, userId, amount.neg(), type, reference);
-    return this.db.$transaction((t) => this.writeEntry(t, userId, amount.neg(), type, reference));
+    return this.db.$transaction((t) =>
+      this.writeEntry(t, userId, amount.neg(), type, reference),
+    );
   }
 
   async getBalance(userId: string): Promise<Prisma.Decimal> {
@@ -36,7 +40,7 @@ export class LedgerService {
   async getHistory(userId: string, limit = 50, offset = 0) {
     return this.db.ledgerEntry.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: Math.min(limit, 200),
       skip: offset,
     });
@@ -60,7 +64,7 @@ export class LedgerService {
     const after = current.add(signedAmount);
 
     if (after.isNegative()) {
-      throw new BadRequestException('Insufficient balance');
+      throw new BadRequestException("Insufficient balance");
     }
 
     return tx.ledgerEntry.create({
@@ -83,6 +87,8 @@ export class LedgerService {
       where: { userId },
       _sum: { amount: true },
     });
-    return (result._sum.amount as Prisma.Decimal | null) ?? new Prisma.Decimal(0);
+    return (
+      (result._sum.amount as Prisma.Decimal | null) ?? new Prisma.Decimal(0)
+    );
   }
 }

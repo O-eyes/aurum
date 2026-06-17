@@ -3,8 +3,8 @@
  * Run: pnpm --filter @aurum/db db:seed
  * Or:  npx ts-node prisma/seed.ts
  */
-import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import { PrismaClient } from "@prisma/client";
+import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -13,24 +13,26 @@ interface SeedAdmin {
   password: string;
   firstName?: string;
   lastName?: string;
-  role: 'ADMIN' | 'COMPLIANCE' | 'TREASURY';
+  role: "ADMIN" | "COMPLIANCE" | "TREASURY";
 }
 
 const ADMINS: SeedAdmin[] = [
   {
-    email: process.env.SEED_ADMIN_EMAIL ?? 'admin@aurum.finance',
-    password: process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!2025',
-    firstName: 'Platform',
-    lastName: 'Admin',
-    role: 'ADMIN',
+    email: process.env.SEED_ADMIN_EMAIL ?? "admin@aurum.finance",
+    password: process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe!2025",
+    firstName: "Platform",
+    lastName: "Admin",
+    role: "ADMIN",
   },
 ];
 
 async function main() {
-  console.log('Seeding database…');
+  console.log("Seeding database…");
 
   for (const admin of ADMINS) {
-    const existing = await prisma.user.findUnique({ where: { email: admin.email } });
+    const existing = await prisma.user.findUnique({
+      where: { email: admin.email },
+    });
 
     if (existing) {
       if (existing.role !== admin.role) {
@@ -55,14 +57,14 @@ async function main() {
         lastName: admin.lastName ?? null,
         role: admin.role,
         emailVerified: true,
-        kycProfile: { create: { status: 'APPROVED' } },
+        kycProfile: { create: { status: "APPROVED" } },
       },
     });
 
     console.log(`Created ${admin.role} → ${user.email} (id: ${user.id})`);
   }
 
-  console.log('Done.');
+  console.log("Done.");
 }
 
 main()

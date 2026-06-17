@@ -1,13 +1,17 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import { Providers } from '@/providers';
+import type { Metadata } from "next";
+import "./globals.css";
+import { Providers } from "@/providers";
 
 export const metadata: Metadata = {
-  title: 'Aurum — Gold-backed tokens',
-  description: 'Buy, hold, and redeem gold-backed digital tokens.',
+  title: "Aurum — Gold-backed tokens",
+  description: "Buy, hold, and redeem gold-backed digital tokens.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>

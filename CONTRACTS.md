@@ -2,8 +2,8 @@
 
 `AurumToken` is the on-chain representation of vault-held gold: an **ERC-20,
 18-decimal, UUPS-upgradeable** token. All business logic (KYC, reserve
-accounting, compliance) is **off-chain** — the contract only enforces *who can
-mint/burn* and *pause*.
+accounting, compliance) is **off-chain** — the contract only enforces _who can
+mint/burn_ and _pause_.
 
 - Source: [contracts/src/AurumToken.sol](contracts/src/AurumToken.sol)
 - Deploy script: [contracts/script/Deploy.s.sol](contracts/script/Deploy.s.sol)
@@ -13,12 +13,12 @@ mint/burn* and *pause*.
 
 ## Roles (set at `initialize`, behind the proxy)
 
-| Role | Granted to | Can |
-|---|---|---|
-| `DEFAULT_ADMIN_ROLE` | `ADMIN_MULTISIG` | grant/revoke all roles |
-| `UPGRADER_ROLE` | `ADMIN_MULTISIG` | **replace the implementation** (UUPS) |
-| `MINTER_ROLE` | `MINTER_HOT_WALLET` | `mint(to, amount, orderId)` |
-| `PAUSER_ROLE` | `PAUSER_ADDRESS` | `pause()` / `unpause()` |
+| Role                 | Granted to          | Can                                   |
+| -------------------- | ------------------- | ------------------------------------- |
+| `DEFAULT_ADMIN_ROLE` | `ADMIN_MULTISIG`    | grant/revoke all roles                |
+| `UPGRADER_ROLE`      | `ADMIN_MULTISIG`    | **replace the implementation** (UUPS) |
+| `MINTER_ROLE`        | `MINTER_HOT_WALLET` | `mint(to, amount, orderId)`           |
+| `PAUSER_ROLE`        | `PAUSER_ADDRESS`    | `pause()` / `unpause()`               |
 
 > ⚠️ **`UPGRADER_ROLE` can swap the contract's entire logic.** On testnet a
 > single EOA is fine. For production (Polygon), `ADMIN_MULTISIG` **must** be a
@@ -53,6 +53,7 @@ note `contracts/lib/` is git-ignored, so it's re-fetched per machine.
 ### After deploy — wire the backend
 
 In `services/api/.env`:
+
 ```
 AURUM_TOKEN_ADDRESS=<PROXY address — not the implementation>
 CHAIN_ID=11155111
@@ -95,6 +96,7 @@ The provider/chain evaluation chose **Polygon PoS** for production. Sepolia
 exercise Polygon-specific behavior (gas token, fee dynamics, finality, reorgs).
 
 For closer parity, deploy/test on **Polygon Amoy (chain 80002)** instead:
+
 ```bash
 SEPOLIA_RPC_URL="https://polygon-amoy.g.alchemy.com/v2/<KEY>" \
 CHAIN_NAME="polygon-amoy" \

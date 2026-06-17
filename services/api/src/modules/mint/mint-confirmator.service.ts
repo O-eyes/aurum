@@ -1,18 +1,24 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { ConfigService } from '@nestjs/config';
-import { createPublicClient, http, parseAbi, parseEventLogs, type Chain } from 'viem';
-import { mainnet, sepolia } from 'viem/chains';
-import { Prisma } from '@prisma/client';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { MintService } from './mint.service';
-import { MintBurnStatus } from '@aurum/types';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { ConfigService } from "@nestjs/config";
+import {
+  createPublicClient,
+  http,
+  parseAbi,
+  parseEventLogs,
+  type Chain,
+} from "viem";
+import { mainnet, sepolia } from "viem/chains";
+import { Prisma } from "@prisma/client";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { MintService } from "./mint.service";
+import { MintBurnStatus } from "@aurum/types";
 
 const POLL_BATCH_SIZE = 20;
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const TRANSFER_EVENT_ABI = parseAbi([
-  'event Transfer(address indexed from, address indexed to, uint256 value)',
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
 ]);
 
 @Injectable()
@@ -27,21 +33,23 @@ export class MintConfirmatorService {
     private readonly mintService: MintService,
     config: ConfigService,
   ) {
-    this.rpcUrl = config.get<string>('blockchain.rpcUrl') ?? '';
-    this.chainId = config.get<number>('blockchain.chainId') ?? 1;
-    this.tokenAddress = (config.get<string>('blockchain.aurumTokenAddress') ?? '').toLowerCase();
+    this.rpcUrl = config.get<string>("blockchain.rpcUrl") ?? "";
+    this.chainId = config.get<number>("blockchain.chainId") ?? 1;
+    this.tokenAddress = (
+      config.get<string>("blockchain.aurumTokenAddress") ?? ""
+    ).toLowerCase();
   }
 
   // ── Poll pending mints every 30 seconds ───────────────────────────────────
 
-  @Cron('*/30 * * * * *')
+  @Cron("*/30 * * * * *")
   async pollSubmittedMints() {
     if (!this.rpcUrl) return;
 
     const submitted = await this.db.mintRequest.findMany({
       where: { status: MintBurnStatus.SUBMITTED, txHash: { not: null } },
       take: POLL_BATCH_SIZE,
-      orderBy: { submittedAt: 'asc' },
+      orderBy: { submittedAt: "asc" },
     });
 
     if (submitted.length === 0) return;
@@ -55,14 +63,14 @@ export class MintConfirmatorService {
 
   // ── Poll pending burns every 30 seconds ───────────────────────────────────
 
-  @Cron('*/30 * * * * *')
+  @Cron("*/30 * * * * *")
   async pollSubmittedBurns() {
     if (!this.rpcUrl) return;
 
     const submitted = await this.db.burnRequest.findMany({
       where: { status: MintBurnStatus.SUBMITTED, txHash: { not: null } },
       take: POLL_BATCH_SIZE,
-      orderBy: { submittedAt: 'asc' },
+      orderBy: { submittedAt: "asc" },
     });
 
     if (submitted.length === 0) return;
@@ -89,9 +97,11 @@ export class MintConfirmatorService {
 
       if (!receipt) return; // not yet mined
 
-      if (receipt.status === 'success') {
-        this.logger.log(`Mint confirmed on-chain: ${req.txHash} (order ${req.orderId})`);
-        await this.mintService.confirmMint(req.id, 'system:confirmator');
+      if (receipt.status === "success") {
+        this.logger.log(
+          `Mint confirmed on-chain: ${req.txHash} (order ${req.orderId})`,
+        );
+        await this.mintService.confirmMint(req.id, "system:confirmator");
       } else {
         this.logger.warn(`Mint reverted on-chain: ${req.txHash}`);
         await this.db.mintRequest.update({
@@ -101,8 +111,8 @@ export class MintConfirmatorService {
       }
     } catch (err: unknown) {
       // Transaction not found yet — will retry next poll
-      const msg = (err as Error).message ?? '';
-      if (!msg.includes('TransactionReceiptNotFoundError')) {
+      const msg = (err as Error).message ?? "";
+      if (!msg.includes("TransactionReceiptNotFoundError")) {
         this.logger.warn(`Mint poll error for ${req.txHash}: ${msg}`);
       }
     }
@@ -127,7 +137,7 @@ export class MintConfirmatorService {
 
       if (!receipt) return;
 
-      if (receipt.status !== 'success') {
+      if (receipt.status !== "success") {
         this.logger.warn(`Burn reverted on-chain: ${req.txHash}`);
         await this.db.burnRequest.update({
           where: { id: req.id },
@@ -139,7 +149,9 @@ export class MintConfirmatorService {
       // The tx hash is user-supplied: a successful receipt alone proves nothing.
       // It must contain a Transfer(walletAddress → 0x0) of at least the expected
       // amount, emitted by OUR token contract, before any payout can follow.
-      if (!this.receiptProvesBurn(receipt, req.walletAddress, req.tokenAmount)) {
+      if (
+        !this.receiptProvesBurn(receipt, req.walletAddress, req.tokenAmount)
+      ) {
         this.logger.warn(
           `Burn tx ${req.txHash} succeeded but contains no matching burn event — marking FAILED (order ${req.orderId})`,
         );
@@ -150,7 +162,9 @@ export class MintConfirmatorService {
         return;
       }
 
-      this.logger.log(`Burn confirmed on-chain: ${req.txHash} (order ${req.orderId})`);
+      this.logger.log(
+        `Burn confirmed on-chain: ${req.txHash} (order ${req.orderId})`,
+      );
       await this.db.burnRequest.update({
         where: { id: req.id },
         data: {
@@ -161,8 +175,8 @@ export class MintConfirmatorService {
       });
       // Payout is triggered separately by PayoutsService once it observes CONFIRMED burn
     } catch (err: unknown) {
-      const msg = (err as Error).message ?? '';
-      if (!msg.includes('TransactionReceiptNotFoundError')) {
+      const msg = (err as Error).message ?? "";
+      if (!msg.includes("TransactionReceiptNotFoundError")) {
         this.logger.warn(`Burn poll error for ${req.txHash}: ${msg}`);
       }
     }
@@ -176,14 +190,14 @@ export class MintConfirmatorService {
     if (!this.tokenAddress) return false;
 
     const expectedWei = BigInt(
-      tokenAmount.times(new Prisma.Decimal('1e18')).toFixed(0),
+      tokenAmount.times(new Prisma.Decimal("1e18")).toFixed(0),
     );
 
     try {
       const transfers = parseEventLogs({
         abi: TRANSFER_EVENT_ABI,
         logs: receipt.logs,
-        eventName: 'Transfer',
+        eventName: "Transfer",
       });
 
       return transfers.some(

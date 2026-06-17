@@ -1,43 +1,47 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useAuth } from '@/contexts/auth-context';
-import { ApiError } from '@/lib/api';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuth } from "@/contexts/auth-context";
+import { ApiError } from "@/lib/api";
 
 const schema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(1, 'Required'),
+  email: z.string().email("Invalid email"),
+  password: z.string().min(1, "Required"),
 });
 type FormData = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, devLogin } = useAuth();
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem('aurum_ops_session_expired') === '1') {
+    if (localStorage.getItem("aurum_ops_session_expired") === "1") {
       setSessionExpired(true);
-      localStorage.removeItem('aurum_ops_session_expired');
+      localStorage.removeItem("aurum_ops_session_expired");
     }
   }, []);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
   const onSubmit = async (data: FormData) => {
-    setError('');
+    setError("");
     try {
       await login(data.email, data.password);
-      router.replace('/dashboard');
+      router.replace("/dashboard");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Login failed');
+      setError(e instanceof ApiError ? e.message : "Login failed");
     }
   };
 
@@ -66,37 +70,52 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
               <input
                 type="email"
                 autoComplete="email"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                {...register('email')}
+                {...register("email")}
               />
-              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
+              {errors.email && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
               <input
                 type="password"
                 autoComplete="current-password"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                {...register('password')}
+                {...register("password")}
               />
-              {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
+              {errors.password && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
             <button
               type="submit"
               disabled={isSubmitting}
               className="w-full rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium py-2 text-sm transition-colors disabled:opacity-50"
             >
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
+              {isSubmitting ? "Signing in…" : "Sign in"}
             </button>
           </form>
-          {process.env.NODE_ENV === 'development' && (
+          {process.env.NODE_ENV === "development" && (
             <button
               type="button"
-              onClick={() => { devLogin(); router.replace('/dashboard'); }}
+              onClick={() => {
+                devLogin();
+                router.replace("/dashboard");
+              }}
               className="w-full rounded-lg border border-dashed border-slate-600 py-2 text-xs text-slate-400 hover:border-slate-500 hover:text-slate-300 transition-colors"
             >
               ⚡ Dev preview (no backend)

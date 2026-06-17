@@ -5,27 +5,34 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-} from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { v4 as uuid } from 'uuid';
-import { DatabaseService } from '../../infrastructure/database/database.service';
-import { KafkaService } from '../../infrastructure/kafka/kafka.service';
-import { AuditService } from '../audit/audit.service';
-import { FxService } from '../../infrastructure/fx/fx.service';
-import { LedgerService } from '../ledger/ledger.service';
-import { KafkaTopic } from '../../infrastructure/kafka/kafka.topics';
-import { PAYMENT_PROVIDER } from './payment.provider.interface';
-import { PaystackProvider } from './providers/paystack.provider';
-import { AuditAction, MintBurnStatus, OrderType, PayoutStatus, LedgerType } from '@aurum/types';
-import type { SetPayoutMethodDto } from './dto/set-payout-method.dto';
+} from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { v4 as uuid } from "uuid";
+import { DatabaseService } from "../../infrastructure/database/database.service";
+import { KafkaService } from "../../infrastructure/kafka/kafka.service";
+import { AuditService } from "../audit/audit.service";
+import { FxService } from "../../infrastructure/fx/fx.service";
+import { LedgerService } from "../ledger/ledger.service";
+import { KafkaTopic } from "../../infrastructure/kafka/kafka.topics";
+import { PAYMENT_PROVIDER } from "./payment.provider.interface";
+import { PaystackProvider } from "./providers/paystack.provider";
+import {
+  AuditAction,
+  MintBurnStatus,
+  OrderType,
+  PayoutStatus,
+  LedgerType,
+} from "@aurum/types";
+import type { SetPayoutMethodDto } from "./dto/set-payout-method.dto";
 
 // Map currency codes to Paystack recipient types
-const RECIPIENT_TYPE_MAP: Record<string, 'nuban' | 'mobile_money' | 'ghipss'> = {
-  NGN: 'nuban',    // Nigerian bank account
-  GHS: 'ghipss',  // Ghana bank account (use 'mobile_money' for MoMo)
-  ZAR: 'nuban',
-  KES: 'nuban',
-};
+const RECIPIENT_TYPE_MAP: Record<string, "nuban" | "mobile_money" | "ghipss"> =
+  {
+    NGN: "nuban", // Nigerian bank account
+    GHS: "ghipss", // Ghana bank account (use 'mobile_money' for MoMo)
+    ZAR: "nuban",
+    KES: "nuban",
+  };
 
 const CURRENCY_MULTIPLIERS: Record<string, number> = {
   GHS: 100,
@@ -49,10 +56,19 @@ export class PayoutsService {
 
   // ── Set payout method on a SELL order ─────────────────────────────────────
 
-  async setPayoutMethod(orderId: string, userId: string, dto: SetPayoutMethodDto) {
-    const order = await this.db.order.findFirst({ where: { id: orderId, userId } });
-    if (!order) throw new NotFoundException('Order not found');
-    if (order.type !== OrderType.SELL) throw new BadRequestException('Payout method only applicable to SELL orders');
+  async setPayoutMethod(
+    orderId: string,
+    userId: string,
+    dto: SetPayoutMethodDto,
+  ) {
+    const order = await this.db.order.findFirst({
+      where: { id: orderId, userId },
+    });
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.type !== OrderType.SELL)
+      throw new BadRequestException(
+        "Payout method only applicable to SELL orders",
+      );
 
     await this.db.order.update({
       where: { id: orderId },
@@ -70,25 +86,38 @@ export class PayoutsService {
       include: { burnRequest: true, payout: true },
     });
 
-    if (!order) throw new NotFoundException('Order not found');
-    if (order.userId !== userId) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException("Order not found");
+    if (order.userId !== userId) throw new NotFoundException("Order not found");
     if (order.payout) return order.payout; // idempotent
 
-    if (!order.burnRequest || order.burnRequest.status !== MintBurnStatus.CONFIRMED) {
-      throw new BadRequestException('Burn must be confirmed before initiating payout');
+    if (
+      !order.burnRequest ||
+      order.burnRequest.status !== MintBurnStatus.CONFIRMED
+    ) {
+      throw new BadRequestException(
+        "Burn must be confirmed before initiating payout",
+      );
     }
 
     const payoutMeta = order.payoutMetadata as SetPayoutMethodDto | null;
     if (!payoutMeta) {
-      throw new BadRequestException('Payout method has not been set for this order');
+      throw new BadRequestException(
+        "Payout method has not been set for this order",
+      );
     }
 
-    const user = await this.db.user.findUniqueOrThrow({ where: { id: order.userId }, select: { email: true } });
+    const user = await this.db.user.findUniqueOrThrow({
+      where: { id: order.userId },
+      select: { email: true },
+    });
 
     // Create/look up Paystack transfer recipient
-    const { recipientCode } = await this.createRecipient(payoutMeta, user.email);
+    const { recipientCode } = await this.createRecipient(
+      payoutMeta,
+      user.email,
+    );
 
-    const reference = `AUR-PAY-${uuid().replace(/-/g, '').substring(0, 14).toUpperCase()}`;
+    const reference = `AUR-PAY-${uuid().replace(/-/g, "").substring(0, 14).toUpperCase()}`;
     const currency = payoutMeta.currency;
     const multiplier = CURRENCY_MULTIPLIERS[currency] ?? 100;
     // Convert the USD order value into the payout currency server-side.
@@ -119,22 +148,25 @@ export class PayoutsService {
       await (tx as any).payout.create({
         data: {
           orderId,
-          provider: 'paystack',
+          provider: "paystack",
           recipientCode,
           transferCode,
           providerRef: reference,
-          status: status === 'success' ? PayoutStatus.CONFIRMED : PayoutStatus.INITIATED,
+          status:
+            status === "success"
+              ? PayoutStatus.CONFIRMED
+              : PayoutStatus.INITIATED,
           amount: new Prisma.Decimal(amountSmallestUnit).div(multiplier),
           currency,
-          ...(status === 'success' && { confirmedAt: new Date() }),
+          ...(status === "success" && { confirmedAt: new Date() }),
         },
       });
     });
 
     await this.audit.emit({
-      actorId: 'system:payouts',
+      actorId: "system:payouts",
       action: AuditAction.PAYOUT_INITIATED,
-      resource: 'payout',
+      resource: "payout",
       resourceId: orderId,
       after: { transferCode, reference, currency, status },
       requestId,
@@ -142,9 +174,9 @@ export class PayoutsService {
 
     await this.kafka.publish(
       KafkaTopic.PAYOUT_INITIATED,
-      'PAYOUT_INITIATED',
+      "PAYOUT_INITIATED",
       { orderId, userId: order.userId, transferCode, reference },
-      { requestId, actorId: 'system:payouts' },
+      { requestId, actorId: "system:payouts" },
     );
 
     return { transferCode, reference, status };
@@ -152,15 +184,23 @@ export class PayoutsService {
 
   // ── Paystack transfer webhook ──────────────────────────────────────────────
 
-  async handleTransferWebhook(rawBody: string, signature: string, requestId: string) {
+  async handleTransferWebhook(
+    rawBody: string,
+    signature: string,
+    requestId: string,
+  ) {
     if (!this.provider.verifyWebhookSignature(rawBody, signature)) {
-      throw new ForbiddenException('Invalid webhook signature');
+      throw new ForbiddenException("Invalid webhook signature");
     }
 
     const payload = JSON.parse(rawBody) as Record<string, unknown>;
-    const event = (payload.event as string) ?? '';
+    const event = (payload.event as string) ?? "";
 
-    if (!['transfer.success', 'transfer.failed', 'transfer.reversed'].includes(event)) {
+    if (
+      !["transfer.success", "transfer.failed", "transfer.reversed"].includes(
+        event,
+      )
+    ) {
       return { received: true };
     }
 
@@ -172,27 +212,39 @@ export class PayoutsService {
       include: { order: true },
     });
 
-    if (!payout || payout.status === PayoutStatus.CONFIRMED) return { received: true };
+    if (!payout || payout.status === PayoutStatus.CONFIRMED)
+      return { received: true };
 
     const newStatus =
-      parsed.status === 'success' ? PayoutStatus.CONFIRMED :
-      parsed.status === 'reversed' ? PayoutStatus.REVERSED : PayoutStatus.FAILED;
+      parsed.status === "success"
+        ? PayoutStatus.CONFIRMED
+        : parsed.status === "reversed"
+          ? PayoutStatus.REVERSED
+          : PayoutStatus.FAILED;
 
     await this.db.payout.update({
       where: { id: payout.id },
       data: {
         status: newStatus,
-        ...(newStatus === PayoutStatus.CONFIRMED && { confirmedAt: new Date() }),
+        ...(newStatus === PayoutStatus.CONFIRMED && {
+          confirmedAt: new Date(),
+        }),
       },
     });
 
-    const action = newStatus === PayoutStatus.CONFIRMED ? AuditAction.PAYOUT_CONFIRMED : AuditAction.PAYOUT_FAILED;
-    const topic = newStatus === PayoutStatus.CONFIRMED ? KafkaTopic.PAYOUT_CONFIRMED : KafkaTopic.PAYOUT_FAILED;
+    const action =
+      newStatus === PayoutStatus.CONFIRMED
+        ? AuditAction.PAYOUT_CONFIRMED
+        : AuditAction.PAYOUT_FAILED;
+    const topic =
+      newStatus === PayoutStatus.CONFIRMED
+        ? KafkaTopic.PAYOUT_CONFIRMED
+        : KafkaTopic.PAYOUT_FAILED;
 
     await this.audit.emit({
-      actorId: 'system:paystack',
+      actorId: "system:paystack",
       action,
-      resource: 'payout',
+      resource: "payout",
       resourceId: payout.orderId,
       before: { status: payout.status },
       after: { status: newStatus, transferCode: parsed.transferCode },
@@ -202,8 +254,12 @@ export class PayoutsService {
     await this.kafka.publish(
       topic,
       action,
-      { orderId: payout.orderId, userId: payout.order.userId, transferCode: parsed.transferCode },
-      { requestId, actorId: 'system:paystack' },
+      {
+        orderId: payout.orderId,
+        userId: payout.order.userId,
+        transferCode: parsed.transferCode,
+      },
+      { requestId, actorId: "system:paystack" },
     );
 
     return { received: true };
@@ -212,16 +268,16 @@ export class PayoutsService {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   private async createRecipient(dto: SetPayoutMethodDto, _email: string) {
-    if (dto.type === 'mobile_money') {
+    if (dto.type === "mobile_money") {
       // Mobile money uses Paystack's mobile_money recipient type
       const networkToBankCode: Record<string, string> = {
-        mtn: 'MTN',
-        vodafone: 'VOD',
-        tigo: 'TGO',
-        airtel: 'ATL',
+        mtn: "MTN",
+        vodafone: "VOD",
+        tigo: "TGO",
+        airtel: "ATL",
       };
       return this.provider.createTransferRecipient({
-        type: 'mobile_money',
+        type: "mobile_money",
         name: dto.name,
         accountNumber: dto.phone,
         bankCode: networkToBankCode[dto.network] ?? dto.network.toUpperCase(),
@@ -230,7 +286,7 @@ export class PayoutsService {
     }
 
     // Bank account
-    const recipientType = RECIPIENT_TYPE_MAP[dto.currency] ?? 'nuban';
+    const recipientType = RECIPIENT_TYPE_MAP[dto.currency] ?? "nuban";
     return this.provider.createTransferRecipient({
       type: recipientType,
       name: dto.name,

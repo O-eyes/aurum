@@ -1,20 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
-import { Sidebar } from '@/components/layout/sidebar';
-import { ReserveBar } from '@/components/reserve/reserve-bar';
-import { PageLoader } from '@/components/ui/spinner';
-import { Menu } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { Sidebar } from "@/components/layout/sidebar";
+import { ReserveBar } from "@/components/reserve/reserve-bar";
+import { PageLoader } from "@/components/ui/spinner";
+import { Menu } from "lucide-react";
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+export default function PortalLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.replace('/login');
+    if (!isLoading && !isAuthenticated) router.replace("/login");
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) return <PageLoader />;
@@ -37,7 +41,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <div className="h-6 w-6 rounded bg-gold-500 flex items-center justify-center">
               <span className="text-white font-bold text-xs">Au</span>
             </div>
-            <span className="font-semibold text-gray-900 dark:text-white text-sm">Aurum</span>
+            <span className="font-semibold text-gray-900 dark:text-white text-sm">
+              Aurum
+            </span>
           </div>
         </div>
 
